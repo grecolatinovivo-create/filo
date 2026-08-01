@@ -133,14 +133,14 @@ struct ProfileView: View {
     }
 
     private var titoloAccesso: String {
-        if let n = account.nome, !n.isEmpty { return "Ciao, \(n)" }
-        return account.isLoggedIn ? "Accesso effettuato" : "FILO è gratis"
+        if let n = account.nome, !n.isEmpty { return String(localized: "Ciao, \(n)") }
+        return account.isLoggedIn ? String(localized: "Accesso effettuato") : String(localized: "FILO è gratis")
     }
 
     private var sottotitoloAccesso: String {
         account.isLoggedIn
-            ? "Tutti gli extra sono sbloccati."
-            : "Tutti gli extra sono sbloccati, nessun acquisto."
+            ? String(localized: "Tutti gli extra sono sbloccati.")
+            : String(localized: "Tutti gli extra sono sbloccati, nessun acquisto.")
     }
 
     // MARK: Strumenti admin/tester
@@ -233,7 +233,7 @@ struct ProfileView: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(t.nome)\(selezionato ? ", selezionato" : "")")
+        .accessibilityLabel(selezionato ? String(localized: "\(t.nome), selezionato") : t.nome)
     }
 
     // MARK: Archivio

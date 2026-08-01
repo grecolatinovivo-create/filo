@@ -42,11 +42,11 @@ enum ThemeID: String, CaseIterable, Identifiable, Codable {
 
     var nome: String {
         switch self {
-        case .notte:     return "Notte"
-        case .aurora:    return "Aurora"
-        case .tramonto:  return "Tramonto"
-        case .foresta:   return "Foresta"
-        case .ciclamino: return "Ciclamino"
+        case .notte:     return String(localized: "Notte")
+        case .aurora:    return String(localized: "Aurora")
+        case .tramonto:  return String(localized: "Tramonto")
+        case .foresta:   return String(localized: "Foresta")
+        case .ciclamino: return String(localized: "Ciclamino")
         }
     }
 

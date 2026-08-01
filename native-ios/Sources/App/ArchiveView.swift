@@ -146,9 +146,11 @@ struct ArchiveView: View {
         let lSarto: Int
         var id: Int { numero }
         var etichettaData: String {
-            let mesi = ["", "gennaio","febbraio","marzo","aprile","maggio","giugno",
-                        "luglio","agosto","settembre","ottobre","novembre","dicembre"]
-            return "\(d) \(mesi[m]) \(y)"
+            var comps = DateComponents()
+            comps.year = y; comps.month = m; comps.day = d
+            let date = Calendar.current.date(from: comps) ?? Date()
+            // Formattazione localizzata automatica secondo la lingua del sistema.
+            return date.formatted(.dateTime.day().month(.wide).year())
         }
     }
 
@@ -209,8 +211,12 @@ final class ArchiveSession: ObservableObject {
         switch engine.stato {
         case .vinta:
             let c = engine.percorsoVincente?.count ?? 0
-            return Punteggio.stelle(caselle: c, lSarto: puzzle.lSarto).label
-        case .persa: return "Il Sarto la spunta — riprova"
+            let res = Punteggio.stelle(caselle: c, lSarto: puzzle.lSarto)
+            if res.gold { return String(localized: "Hai battuto il Sarto!") }
+            if res.stelle == 3 { return String(localized: "Filo perfetto") }
+            if res.stelle == 2 { return String(localized: "Filo elegante") }
+            return String(localized: "Filo riuscito")
+        case .persa: return String(localized: "Il Sarto la spunta — riprova")
         case .inCorso: return ""
         }
     }

@@ -25,7 +25,8 @@ struct ResultView: View {
                 VStack(spacing: 12) {
                     // 1. eyebrow
                     HStack {
-                        Text("FILO #\(vm.numero)\(vinta ? " · Vittoria" : "")")
+                        Text(vinta ? String(localized: "FILO #\(vm.numero) · Vittoria")
+                                   : String(localized: "FILO #\(vm.numero)"))
                             .captionStyle()
                         Spacer()
                         Button {
@@ -149,48 +150,57 @@ struct ResultView: View {
     }
 
     private var etichettaStelleAccessibile: String {
-        let base = vm.stelleOggi == 3 ? "Tre stelle" : vm.stelleOggi == 2 ? "Due stelle" : "Una stella"
-        return vm.sartoBattutoOggi ? base + ", hai battuto il Sarto" : base
+        let base = vm.stelleOggi == 3 ? String(localized: "Tre stelle")
+                 : vm.stelleOggi == 2 ? String(localized: "Due stelle")
+                 : String(localized: "Una stella")
+        return vm.sartoBattutoOggi ? String(localized: "\(base), hai battuto il Sarto") : base
     }
 
     // MARK: Testi (NEURO_SPEC §2.1/§2.2, normativi)
 
     private var etichetta: String {
-        guard vinta, let fv = filoVincente else { return "Oggi il Sarto la spunta" }
-        return Punteggio.stelle(caselle: fv.filo.caselle, lSarto: L).label
+        guard vinta, let fv = filoVincente else { return String(localized: "Oggi il Sarto la spunta") }
+        let res = Punteggio.stelle(caselle: fv.filo.caselle, lSarto: L)
+        if res.gold { return String(localized: "Hai battuto il Sarto!") }
+        if res.stelle == 3 { return String(localized: "Filo perfetto") }
+        if res.stelle == 2 { return String(localized: "Filo elegante") }
+        return String(localized: "Filo riuscito")
     }
 
     private var rigaDati: String {
-        guard vinta, let fv = filoVincente else { return "3 fili usati · Sarto: \(L) caselle" }
-        return "\(fv.filo.caselle) caselle · \(fv.indice)° filo · Sarto: \(L)"
+        guard vinta, let fv = filoVincente else { return String(localized: "3 fili usati · Sarto: \(L) caselle") }
+        return String(localized: "\(fv.filo.caselle) caselle · \(fv.indice)° filo · Sarto: \(L)")
     }
 
     private var sottoriga: String {
         guard vinta, let fv = filoVincente else {
-            return "Il suo percorso è qui sotto: studialo. Domani c'è un filo nuovo."
+            return String(localized: "Il suo percorso è qui sotto: studialo. Domani c'è un filo nuovo.")
         }
         let C = fv.filo.caselle
         let res = Punteggio.stelle(caselle: C, lSarto: L)
-        if res.gold { return "\(C) caselle contro le sue \(L). Oggi il maestro sei tu." }
-        if res.stelle == 3 { return "Stessa misura del Sarto: \(C) caselle. Cucito a regola d'arte." }
-        if res.stelle == 2 { return "A un soffio dal Sarto: \(L - C) caselle di differenza. Ci sei quasi." }
-        return "Somma esatta! Il Sarto però l'ha cucita in \(L) caselle. Domani allunghi il filo?"
+        if res.gold { return String(localized: "\(C) caselle contro le sue \(L). Oggi il maestro sei tu.") }
+        if res.stelle == 3 { return String(localized: "Stessa misura del Sarto: \(C) caselle. Cucito a regola d'arte.") }
+        if res.stelle == 2 {
+            let d = L - C
+            return String(localized: "A un soffio dal Sarto: \(d) caselle di differenza. Ci sei quasi.")
+        }
+        return String(localized: "Somma esatta! Il Sarto però l'ha cucita in \(L) caselle. Domani allunghi il filo?")
     }
 
     private var testoStreak: String {
         let sk = vm.streakEffettiva
         switch sk {
-        case 2: return "🔥 2 di fila — il filo comincia a tenere."
-        case 3: return "🔥 3 di fila — tre nodi fanno una cucitura."
-        case 7: return "🔥 7 di fila — una settimana senza perdere il filo."
-        case 30: return "🔥 30 di fila — un mese cucito a mano. Chapeau."
-        default: return "🔥 Serie: \(sk) giorni"
+        case 2: return String(localized: "🔥 2 di fila — il filo comincia a tenere.")
+        case 3: return String(localized: "🔥 3 di fila — tre nodi fanno una cucitura.")
+        case 7: return String(localized: "🔥 7 di fila — una settimana senza perdere il filo.")
+        case 30: return String(localized: "🔥 30 di fila — un mese cucito a mano. Chapeau.")
+        default: return String(localized: "🔥 Serie: \(sk) giorni")
         }
     }
 
     private var captionInvito: String {
-        vinta ? "La griglia racconta tutto senza svelare niente. Falla girare."
-              : "Anche una sconfitta è una bella storia. Sfida qualcuno a far meglio."
+        vinta ? String(localized: "La griglia racconta tutto senza svelare niente. Falla girare.")
+              : String(localized: "Anche una sconfitta è una bella storia. Sfida qualcuno a far meglio.")
     }
 
     // MARK: Countdown

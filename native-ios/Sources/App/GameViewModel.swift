@@ -191,21 +191,21 @@ final class GameViewModel: ObservableObject {
     /// Corpo del dialog strappo (NEURO_SPEC §2.3, plurale normativo).
     var testoDialogStrappo: String {
         let n = engine.filiRimasti - 1
-        if n == 0 { return "È l'ultimo filo: strapparlo chiude la partita di oggi." }
-        if n == 1 { return "Un filo strappato non si ricuce: te ne resterà 1." }
-        return "Un filo strappato non si ricuce: te ne resteranno \(n)."
+        if n == 0 { return String(localized: "È l'ultimo filo: strapparlo chiude la partita di oggi.") }
+        if n == 1 { return String(localized: "Un filo strappato non si ricuce: te ne resterà 1.") }
+        return String(localized: "Un filo strappato non si ricuce: te ne resteranno \(n).")
     }
 
     /// aria-label equivalente per VoiceOver (UX_SPEC §9.4).
     func etichettaCasella(_ idx: Int) -> String {
         let r = idx / 5 + 1, c = idx % 5 + 1
-        var lbl = "Casella riga \(r) colonna \(c), valore \(puzzle.valori[idx])"
+        var lbl = String(localized: "Casella riga \(r) colonna \(c), valore \(puzzle.valori[idx])")
         if let pos = engine.filo.firstIndex(of: idx) {
-            if pos == engine.filo.count - 1 { lbl += ", ultima del filo" }
-            else { lbl += ", nel filo, posizione \(pos + 1)" }
+            if pos == engine.filo.count - 1 { lbl += String(localized: ", ultima del filo") }
+            else { lbl += String(localized: ", nel filo, posizione \(pos + 1)") }
         }
         if engine.gameOver && puzzle.percorsoSarto.contains(idx) {
-            lbl += ", percorso del Sarto"
+            lbl += String(localized: ", percorso del Sarto")
         }
         return lbl
     }
@@ -219,9 +219,9 @@ final class GameViewModel: ObservableObject {
         let mossa = engine.gioca(idx)
         switch mossa {
         case .iniziato:
-            annuncia("Filo iniziato. Somma \(engine.somma) su \(puzzle.T).")
+            annuncia(String(localized: "Filo iniziato. Somma \(engine.somma) su \(puzzle.T)."))
         case .esteso:
-            annuncia("Più \(puzzle.valori[idx]). Somma \(engine.somma) su \(puzzle.T), \(engine.filo.count) caselle.")
+            annuncia(String(localized: "Più \(puzzle.valori[idx]). Somma \(engine.somma) su \(puzzle.T), \(engine.filo.count) caselle."))
         case .vittoria:
             gestisciVittoria()
         case .spezzato:
@@ -231,12 +231,12 @@ final class GameViewModel: ObservableObject {
         case .giaUsata:
             if viaTap {
                 shake(idx)
-                annuncia("Mossa non valida: casella già usata in questo filo.")
+                annuncia(String(localized: "Mossa non valida: casella già usata in questo filo."))
             }
         case .nonAdiacente:
             if viaTap {
                 shake(idx)
-                annuncia("Mossa non valida: la casella non è adiacente all'ultima.")
+                annuncia(String(localized: "Mossa non valida: la casella non è adiacente all'ultima."))
             }
         case .ignorata:
             break
@@ -247,7 +247,7 @@ final class GameViewModel: ObservableObject {
     func tapSuUltima(_ idx: Int) {
         guard !lockInput, !engine.gameOver else { return }
         shake(idx)
-        annuncia("Mossa non valida: casella già usata in questo filo.")
+        annuncia(String(localized: "Mossa non valida: casella già usata in questo filo."))
     }
 
     func richiediStrappo() {
@@ -287,9 +287,10 @@ final class GameViewModel: ObservableObject {
         salvaStats()
         salvaOggi()
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        let parole = res.gold ? "Tre stelle, hai battuto il Sarto!"
-            : (res.stelle == 3 ? "Tre stelle" : res.stelle == 2 ? "Due stelle" : "Una stella")
-        annuncia("Vittoria! Somma esatta \(puzzle.T) con \(C) caselle. \(parole).")
+        let parole = res.gold ? String(localized: "Tre stelle, hai battuto il Sarto!")
+            : (res.stelle == 3 ? String(localized: "Tre stelle")
+               : res.stelle == 2 ? String(localized: "Due stelle") : String(localized: "Una stella"))
+        annuncia(String(localized: "Vittoria! Somma esatta \(puzzle.T) con \(C) caselle. \(parole)."))
         revealPoiRisultato()
     }
 
@@ -306,11 +307,11 @@ final class GameViewModel: ObservableObject {
         let n = engine.filiRimasti
         switch esito {
         case .spezzato:
-            annuncia("Filo spezzato: somma \(concluso.somma), superiore a \(puzzle.T). Fili rimasti: \(n).")
+            annuncia(String(localized: "Filo spezzato: somma \(concluso.somma), superiore a \(puzzle.T). Fili rimasti: \(n)."))
         case .annodato:
-            annuncia("Filo annodato: nessuna casella libera adiacente. Fili rimasti: \(n).")
+            annuncia(String(localized: "Filo annodato: nessuna casella libera adiacente. Fili rimasti: \(n)."))
         default:
-            annuncia("Filo strappato. Fili rimasti: \(n).")
+            annuncia(String(localized: "Filo strappato. Fili rimasti: \(n)."))
         }
         let durata: Double = reduceMotion ? 0.24
             : (esito == .spezzato ? 0.7 : esito == .annodato ? 0.6 : 0.35)
@@ -331,7 +332,7 @@ final class GameViewModel: ObservableObject {
         stats.registra(vinta: false, filiUsati: 3, caselle: 0, gold: false, oggi: o)
         salvaStats()
         salvaOggi()
-        annuncia("Fili finiti. Il percorso del Sarto viene rivelato.")
+        annuncia(String(localized: "Fili finiti. Il percorso del Sarto viene rivelato."))
         revealPoiRisultato()
     }
 
@@ -350,11 +351,11 @@ final class GameViewModel: ObservableObject {
 
     /// Testi toast esito (NEURO_SPEC §2.3, plurale normativo).
     func testoToastEsito(_ esito: EsitoFilo, somma: Int, n: Int) -> String {
-        let resto = (n == 1) ? "Te ne resta 1." : "Te ne restano \(n)."
+        let resto = (n == 1) ? String(localized: "Te ne resta 1.") : String(localized: "Te ne restano \(n).")
         switch esito {
-        case .spezzato: return "💥 Crack! \(somma) su \(puzzle.T): il filo non ha retto. \(resto)"
-        case .annodato: return "🪢 Vicolo cieco a \(somma) su \(puzzle.T). \(resto)"
-        default: return "✂️ Strappo netto. \(resto)"
+        case .spezzato: return String(localized: "💥 Crack! \(somma) su \(puzzle.T): il filo non ha retto. \(resto)")
+        case .annodato: return String(localized: "🪢 Vicolo cieco a \(somma) su \(puzzle.T). \(resto)")
+        default: return String(localized: "✂️ Strappo netto. \(resto)")
         }
     }
 

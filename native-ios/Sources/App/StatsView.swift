@@ -74,7 +74,7 @@ struct StatsView: View {
         .preferredColorScheme(.dark)
     }
 
-    private func statBox(_ valore: String, _ label: String) -> some View {
+    private func statBox(_ valore: String, _ label: LocalizedStringKey) -> some View {
         VStack(spacing: 2) {
             Text(valore)
                 .font(.system(.title2, design: .monospaced).weight(.bold))

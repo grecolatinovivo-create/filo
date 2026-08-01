@@ -46,11 +46,10 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO
-    entitlements:
-      path: FILO.entitlements
-      properties:
-        com.apple.developer.applesignin:
-          - Default
+    # Sign in with Apple in PAUSA: l'entitlement richiede firma di distribuzione
+    # manuale (certificato .p12) e faceva fallire l'archivio in CI. Rimosso così
+    # la firma cloud all'export torna a funzionare come per le altre app. Il
+    # pulsante "Accedi con Apple" è nascosto via AppConfig.appleSignInEnabled.
     info:
       path: Info.plist
       properties:

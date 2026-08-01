@@ -10,7 +10,7 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="FILO — il puzzle quotidiano">
 <meta property="og:description" content="Ogni giorno una griglia 5×5, un numero da raggiungere e tre fili per battere il Sarto.">
-<meta property="og:url" content="https://filo-game.vercel.app">
+<meta property="og:url" content="https://filo-game-liard.vercel.app">
 <meta property="og:site_name" content="FILO">
 <meta property="og:locale" content="it_IT">
 <meta name="twitter:card" content="summary">
@@ -448,6 +448,65 @@ header{
 </style>
 </head>
 <body>
+<!-- ===== LANDING ANIMATA (ingresso) ===== -->
+<style>
+#landing{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:18px;text-align:center;
+  background:radial-gradient(120% 90% at 50% 20%,#1A1030 0%,#11151F 70%);
+  animation:filoLandOut .55s ease 2s forwards;}
+#landing svg{width:min(66vw,300px);height:auto}
+#landing .thread{stroke:#F5B531;stroke-width:6;fill:none;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:560;stroke-dashoffset:560;animation:filoDraw 1.5s cubic-bezier(.6,0,.2,1) .15s forwards;
+  filter:drop-shadow(0 0 7px rgba(245,181,49,.65))}
+#landing .gd{fill:#33405C}
+#landing .dot{fill:#FFD15C;opacity:0;animation:filoDot .01s linear 1.55s forwards}
+#landing .lw{font-family:var(--font-ui,system-ui);font-weight:800;font-size:clamp(42px,15vw,88px);
+  line-height:1;letter-spacing:.28em;padding-left:.28em;color:#F2F5FB;
+  opacity:0;transform:translateY(10px);animation:filoUp .6s ease .85s forwards}
+#landing .lt{font-family:var(--font-ui,system-ui);font-weight:500;font-size:clamp(14px,4.4vw,18px);
+  color:#9FB0CC;max-width:22em;padding:0 24px;opacity:0;animation:filoUp .6s ease 1.2s forwards}
+#landing .lgo{font-family:var(--font-ui,system-ui);font-weight:700;font-size:1.05rem;color:#11151F;
+  border:none;border-radius:999px;padding:14px 34px;margin-top:6px;cursor:pointer;
+  background:linear-gradient(135deg,#FFD15C,#F5B531);box-shadow:0 8px 24px rgba(245,181,49,.35);
+  opacity:0;animation:filoUp .5s ease 1.55s forwards}
+#landing .lhint{font-family:var(--font-ui,system-ui);font-size:.8rem;color:#5b6b82;opacity:0;
+  animation:filoUp .5s ease 1.9s forwards}
+#landing.hide{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .4s ease}
+@keyframes filoDraw{to{stroke-dashoffset:0}}
+@keyframes filoUp{to{opacity:1;transform:none}}
+@keyframes filoDot{to{opacity:1}}
+@keyframes filoLandOut{to{opacity:0;visibility:hidden;pointer-events:none}}
+@media (prefers-reduced-motion:reduce){
+  #landing{animation:filoLandOut .3s ease 1s forwards}
+  #landing .thread{animation:none;stroke-dashoffset:0}
+  #landing .dot,#landing .lw,#landing .lt,#landing .lgo,#landing .lhint{animation:none;opacity:1;transform:none}
+}
+</style>
+<div id="landing" role="dialog" aria-label="Benvenuto in FILO">
+  <svg viewBox="0 0 200 130" aria-hidden="true">
+    <g class="gd">
+      <circle cx="30" cy="25" r="4"/><circle cx="70" cy="25" r="4"/><circle cx="110" cy="25" r="4"/><circle cx="150" cy="25" r="4"/><circle cx="170" cy="25" r="4"/>
+      <circle cx="30" cy="65" r="4"/><circle cx="70" cy="65" r="4"/><circle cx="110" cy="65" r="4"/><circle cx="150" cy="65" r="4"/><circle cx="170" cy="65" r="4"/>
+      <circle cx="30" cy="105" r="4"/><circle cx="70" cy="105" r="4"/><circle cx="110" cy="105" r="4"/><circle cx="150" cy="105" r="4"/><circle cx="170" cy="105" r="4"/>
+    </g>
+    <path class="thread" d="M30 105 L30 65 L70 65 L70 25 L110 25 L110 65 L150 65 L150 105 L170 105 L170 25"/>
+    <circle class="dot" cx="170" cy="25" r="7"/>
+  </svg>
+  <div class="lw">FILO</div>
+  <div class="lt">Un filo. Una somma. Ogni giorno.</div>
+  <button id="landing-go" class="lgo" type="button">Gioca</button>
+  <div class="lhint">tocca per entrare</div>
+</div>
+<script>
+(function(){
+  var l=document.getElementById('landing'); if(!l) return;
+  var done=false;
+  function go(){ if(done) return; done=true; l.classList.add('hide'); setTimeout(function(){ l.style.display='none'; },420); }
+  var b=document.getElementById('landing-go'); if(b) b.addEventListener('click',function(e){ e.stopPropagation(); go(); });
+  l.addEventListener('click',go);
+  setTimeout(function(){ l.style.display='none'; }, 3200); // sicurezza: mai bloccante
+})();
+</script>
 <!-- ===== 3. MARKUP ===== -->
 <div id="banner-nuovo-giorno" role="status" hidden>
   <span class="txt"><span aria-hidden="true">🧵</span> C'è un nuovo FILO!</span>
@@ -595,7 +654,7 @@ var CONFIG = {
   CELLS: 25,
   FILI: 3,
   /* §9.1: riga URL nel testo condiviso SOLO se non vuota (solo web; su iOS ShareLink la passa a parte) */
-  SHARE_URL: 'https://filo-game.vercel.app'
+  SHARE_URL: 'https://filo-game-liard.vercel.app'
 };
 var MS_GIORNO = 86400000;
 var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;

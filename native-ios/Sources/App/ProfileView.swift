@@ -21,7 +21,7 @@ struct ProfileView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     header
-                    accessoSezione
+                    if AppConfig.appleSignInEnabled { accessoSezione } else { gratisSezione }
                     if mostraStrumentiAdmin { testerSezione }
                     temiSezione
                     archivioSezione
@@ -58,6 +58,27 @@ struct ProfileView: View {
             }
             .accessibilityLabel("Chiudi")
         }
+    }
+
+    // MARK: Card "app gratis" (login Apple in pausa) — nessun pulsante di accesso
+
+    private var gratisSezione: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Text("🧵").font(.title)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("FILO è gratis")
+                        .font(.headline).foregroundStyle(Theme.text)
+                    Text("Tutti gli extra sono sbloccati, nessun acquisto.")
+                        .font(.caption).foregroundStyle(Theme.textMuted)
+                }
+                Spacer()
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.border, lineWidth: 1))
     }
 
     // MARK: Accesso (Apple ID, opzionale) — app gratis

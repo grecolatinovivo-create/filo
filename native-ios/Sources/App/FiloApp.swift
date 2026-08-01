@@ -9,14 +9,24 @@ struct FiloApp: App {
     @StateObject private var theme = ThemeManager()
     @StateObject private var store = Store()
     @StateObject private var account = Account()
+    @State private var showIntro = true
 
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environmentObject(viewModel)
-                .environmentObject(theme)
-                .environmentObject(store)
-                .environmentObject(account)
+            ZStack {
+                RootView()
+                    .environmentObject(viewModel)
+                    .environmentObject(theme)
+                    .environmentObject(store)
+                    .environmentObject(account)
+                if showIntro {
+                    IntroView {
+                        withAnimation(.easeInOut(duration: 0.45)) { showIntro = false }
+                    }
+                    .transition(.opacity)
+                    .zIndex(1)
+                }
+            }
         }
     }
 }

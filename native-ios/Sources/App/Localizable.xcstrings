@@ -8268,6 +8268,59 @@
           }
         }
       }
+    },
+    "Un filo. Una somma. Ogni giorno.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un filo. Una somma. Ogni giorno."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One thread. One sum. Every day."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un fil. Une somme. Chaque jour."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un hilo. Una suma. Cada día."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Faden. Eine Summe. Jeden Tag."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一条线。一个和。每一天。"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um fio. Uma soma. Todo dia."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一本の糸、一つの和、毎日。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

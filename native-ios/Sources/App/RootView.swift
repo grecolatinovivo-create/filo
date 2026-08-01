@@ -11,6 +11,8 @@ struct RootView: View {
 
     private let timerGiorno = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
+    @State private var showSalita = false
+
     var body: some View {
         ZStack(alignment: .top) {
             Theme.bgGradient.ignoresSafeArea()
@@ -25,6 +27,7 @@ struct RootView: View {
                             .frame(maxWidth: 420)
                         strappaButton
                             .padding(.top, 8)
+                        salitaButton
                         AdSlot(isPro: store.isPro)
                     }
                     .frame(maxWidth: 480)
@@ -42,11 +45,13 @@ struct RootView: View {
         .sheet(item: $vm.scheda, onDismiss: { vm.onboardingChiuso() }) { scheda in
             switch scheda {
             case .comeSiGioca: OnboardingView()
+            case .onboardingProgressivo: ProgressiveOnboardingView()
             case .risultato: ResultView()
             case .statistiche: StatsView()
             case .profilo: ProfileView()
             }
         }
+        .fullScreenCover(isPresented: $showSalita) { SalitaView() }
         .confirmationDialog("Strappare il filo?",
                             isPresented: $vm.showStrappoDialog,
                             titleVisibility: .visible) {
@@ -119,6 +124,23 @@ struct RootView: View {
         Button("Strappa il filo") { vm.richiediStrappo() }
             .buttonStyle(SecondaryButtonStyle(enabled: vm.strappaDisponibile))
             .disabled(!vm.strappaDisponibile)
+    }
+
+    /// Punto d'ingresso non invasivo alla modalità Salita (a livelli, separata
+    /// dal daily). Compatta, sotto la board.
+    private var salitaButton: some View {
+        Button {
+            showSalita = true
+        } label: {
+            Label("Salita", systemImage: "figure.climbing")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.textMuted)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 16)
+                .overlay(Capsule().strokeBorder(Theme.border, lineWidth: 1))
+        }
+        .padding(.top, 4)
+        .accessibilityHint("Modalità a livelli separata dal gioco del giorno")
     }
 
     // MARK: Banner nuovo giorno (RF10)

@@ -13,7 +13,7 @@ final class GameViewModel: ObservableObject {
     // MARK: Tipi
 
     enum Scheda: String, Identifiable {
-        case comeSiGioca, risultato, statistiche, profilo
+        case comeSiGioca, onboardingProgressivo, risultato, statistiche, profilo
         var id: String { rawValue }
     }
 
@@ -57,6 +57,10 @@ final class GameViewModel: ObservableObject {
     private var bannerDismissedFor: String?
     private var risultatoMostrato = false
     private var toastTask: Task<Void, Never>?
+    /// True solo al PRIMO avvio (onboarding classico non ancora fatto): abilita
+    /// la catena tutorial → onboarding progressivo → daily.
+    private var primoAvvio = false
+    private let progressiveKey = "filo.onboardingProgressivoFatto"
 
     private let defaults = UserDefaults.standard
 
@@ -72,11 +76,19 @@ final class GameViewModel: ObservableObject {
         stats = Self.loadStats(from: UserDefaults.standard)
         ripristinaGiornata()
         if !defaults.bool(forKey: "filo.onboarded") {
+            primoAvvio = true
             scheda = .comeSiGioca
-        } else if engine.gameOver {
-            revealSarto = true
-            risultatoMostrato = true
-            scheda = .risultato        // RF9: giorno concluso → risultato
+        } else {
+            // Retro-compat: chi ha già l'onboarding classico NON deve vedere
+            // l'onboarding progressivo (lo consideriamo già fatto).
+            if !defaults.bool(forKey: progressiveKey) {
+                defaults.set(true, forKey: progressiveKey)
+            }
+            if engine.gameOver {
+                revealSarto = true
+                risultatoMostrato = true
+                scheda = .risultato        // RF9: giorno concluso → risultato
+            }
         }
     }
 
@@ -160,6 +172,10 @@ final class GameViewModel: ObservableObject {
 
     func segnaOnboarded() {
         defaults.set(true, forKey: "filo.onboarded")
+    }
+
+    func segnaOnboardingProgressivoFatto() {
+        defaults.set(true, forKey: progressiveKey)
     }
 
     // MARK: Derivati
@@ -439,6 +455,13 @@ final class GameViewModel: ObservableObject {
     /// Chiamata alla chiusura del tutorial: vale come visto anche con swipe (RF7).
     func onboardingChiuso() {
         segnaOnboarded()
+        // Catena primo avvio: dopo il tutorial classico, una volta sola, mostra
+        // l'onboarding progressivo PRIMA del daily.
+        if primoAvvio && !defaults.bool(forKey: progressiveKey) {
+            primoAvvio = false
+            Task { @MainActor in self.scheda = .onboardingProgressivo }
+            return
+        }
         if engine.gameOver && !risultatoMostrato {
             revealSarto = true
             risultatoMostrato = true

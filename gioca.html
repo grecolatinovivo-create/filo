@@ -659,6 +659,42 @@ var CONFIG = {
 var MS_GIORNO = 86400000;
 var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+/* ---- 4.1b I18N — 8 lingue, segue navigator.language (default it). Non tocca RNG/GENERATOR/RULES/SHARE. ---- */
+var I18N = {"it": {"bannerTxt": "<span aria-hidden=\"true\">🧵</span> C'è un nuovo FILO!", "gioca": "Gioca", "nascondiAvviso": "Nascondi avviso", "comeSiGioca": "Come si gioca", "statistiche": "Statistiche", "grigliaLabel": "Griglia di gioco, 5 righe per 5 colonne", "strappaIlFilo": "Strappa il filo", "chiudi": "Chiudi", "helpP": "Collega le caselle con un filo continuo (niente diagonali) fino a fare ESATTAMENTE la Somma del Giorno.", "demoSomma": "Somma <b>14</b>", "regola1": "<span aria-hidden=\"true\">🧵</span> Hai 3 fili.", "regola2": "<span aria-hidden=\"true\">⛔</span> Il filo non si riavvolge: ogni casella è per sempre.", "regola3": "<span aria-hidden=\"true\">💥</span> Superi la somma? Spezzato.", "regola4": "<span aria-hidden=\"true\">🪢</span> Resti senza uscite? Nodo.", "regola5": "<span aria-hidden=\"true\">⭐</span> Più caselle usi, più stelle: batti il Sarto!", "mondo": "Un nuovo FILO ogni giorno, uguale per tutto il mondo.", "condividiRisultato": "Condividi il risultato <span aria-hidden=\"true\">🧵</span>", "prossimoFilo": "Il prossimo FILO si cuce tra", "leTueStat": "<span aria-hidden=\"true\">📊</span> Le tue statistiche", "strappareIlFilo": "Strappare il filo?", "continua": "Continua", "strappa": "Strappa", "sharePreviewLabel": "Anteprima del risultato da condividere", "hudTLabel": "Somma del Giorno", "cellRiga": "Riga {r} colonna {c}, valore {v}", "cellUltima": ", ultima del filo", "cellPos": ", nel filo, posizione {p}", "cellSarto": ", percorso del Sarto", "hudSarto": "Il Sarto: {L} caselle · minimo {min}", "hudFili": "Fili rimasti: {n} di 3", "annIniziato": "Filo iniziato. Somma {s} su {T}.", "annPiu": "Più {v}. Somma {s} su {T}, {n} caselle.", "mossaUsata": "Mossa non valida: casella già usata in questo filo.", "mossaNonAdiacente": "Mossa non valida: la casella non è adiacente all'ultima.", "restoUno": "Te ne resta 1.", "restoN": "Te ne restano {n}.", "toastSpezzato": "💥 Crack! {s} su {T}: il filo non ha retto. {resto}", "toastAnnodato": "🪢 Vicolo cieco a {s} su {T}. {resto}", "toastStrappato": "✂️ Strappo netto. {resto}", "annSpezzato": "Filo spezzato: somma {s}, superiore a {T}. Fili rimasti: {n}.", "annAnnodato": "Filo annodato: nessuna casella libera adiacente. Fili rimasti: {n}.", "annStrappato": "Filo strappato. Fili rimasti: {n}.", "strappoUltimo": "È l'ultimo filo: strapparlo chiude la partita di oggi.", "strappoUno": "Un filo strappato non si ricuce: te ne resterà 1.", "strappoN": "Un filo strappato non si ricuce: te ne resteranno {n}.", "labelGold": "Hai battuto il Sarto!", "labelPerfetto": "Filo perfetto", "labelElegante": "Filo elegante", "labelRiuscito": "Filo riuscito", "paroleTre": "Tre stelle", "paroleDue": "Due stelle", "paroleUna": "Una stella", "paroleGold": "Tre stelle, hai battuto il Sarto!", "annVittoria": "Vittoria! Somma esatta {T} con {C} caselle. {parole}.", "annSconfitta": "Fili finiti. Il percorso del Sarto viene rivelato.", "eyebrowVitt": "FILO #{n} · Vittoria", "eyebrow": "FILO #{n}", "datiVinta": "{C} caselle · {fWin}° filo · Sarto: {L}", "datiPersa": "3 fili usati · Sarto: {L} caselle", "sottoGold": "{C} caselle contro le sue {L}. Oggi il maestro sei tu.", "sottoTre": "Stessa misura del Sarto: {C} caselle. Cucito a regola d'arte.", "sottoDue": "A un soffio dal Sarto: {d} caselle di differenza. Ci sei quasi.", "sottoUno": "Somma esatta! Il Sarto però l'ha cucita in {L} caselle. Domani allunghi il filo?", "sottoPersa": "Il suo percorso è qui sotto: studialo. Domani c'è un filo nuovo.", "etichettaPersa": "Oggi il Sarto la spunta", "streak2": "🔥 2 di fila — il filo comincia a tenere.", "streak3": "🔥 3 di fila — tre nodi fanno una cucitura.", "streak7": "🔥 7 di fila — una settimana senza perdere il filo.", "streak30": "🔥 30 di fila — un mese cucito a mano. Chapeau.", "streakN": "🔥 Serie: {n} giorni", "captionVinta": "La griglia racconta tutto senza svelare niente. Falla girare.", "captionPersa": "Anche una sconfitta è una bella storia. Sfida qualcuno a far meglio.", "statGiocate": "giocate", "statVittorie": "vittorie", "statSerie": "serie", "statMax": "max", "statVittoriePerFilo": "Vittorie per filo usato", "statFiloN": "{n}° filo", "statRecord": "Record caselle: ", "statSartoBattuto": "Sarto battuto: ", "statVolte": "{n} volte", "copiato": "<span class=\"tick\" aria-hidden=\"true\">✓</span> Copiato! Incollalo in chat 🧵", "tieniPremuto": "Tieni premuto e copia", "giocaIlFilo": "Gioca il FILO #{n}"}, "en": {"bannerTxt": "<span aria-hidden=\"true\">🧵</span> A new FILO is out!", "gioca": "Play", "nascondiAvviso": "Hide notice", "comeSiGioca": "How to play", "statistiche": "Statistics", "grigliaLabel": "Game grid, 5 rows by 5 columns", "strappaIlFilo": "Cut the thread", "chiudi": "Close", "helpP": "Connect the cells with one continuous thread (no diagonals) to make EXACTLY the Daily Sum.", "demoSomma": "Sum <b>14</b>", "regola1": "<span aria-hidden=\"true\">🧵</span> You have 3 threads.", "regola2": "<span aria-hidden=\"true\">⛔</span> The thread never rewinds: every cell is forever.", "regola3": "<span aria-hidden=\"true\">💥</span> Go over the sum? Snapped.", "regola4": "<span aria-hidden=\"true\">🪢</span> No way out? Knot.", "regola5": "<span aria-hidden=\"true\">⭐</span> The more cells you use, the more stars: beat the Tailor!", "mondo": "A new FILO every day, the same for the whole world.", "condividiRisultato": "Share your result <span aria-hidden=\"true\">🧵</span>", "prossimoFilo": "The next FILO is stitched in", "leTueStat": "<span aria-hidden=\"true\">📊</span> Your statistics", "strappareIlFilo": "Cut the thread?", "continua": "Keep going", "strappa": "Cut", "sharePreviewLabel": "Preview of the result to share", "hudTLabel": "Daily Sum", "cellRiga": "Row {r} column {c}, value {v}", "cellUltima": ", last of the thread", "cellPos": ", in the thread, position {p}", "cellSarto": ", Tailor's path", "hudSarto": "The Tailor: {L} cells · minimum {min}", "hudFili": "Threads left: {n} of 3", "annIniziato": "Thread started. Sum {s} of {T}.", "annPiu": "Plus {v}. Sum {s} of {T}, {n} cells.", "mossaUsata": "Invalid move: cell already used in this thread.", "mossaNonAdiacente": "Invalid move: the cell isn't adjacent to the last one.", "restoUno": "1 left.", "restoN": "{n} left.", "toastSpezzato": "💥 Snap! {s} of {T}: the thread gave way. {resto}", "toastAnnodato": "🪢 Dead end at {s} of {T}. {resto}", "toastStrappato": "✂️ Clean cut. {resto}", "annSpezzato": "Thread snapped: sum {s}, over {T}. Threads left: {n}.", "annAnnodato": "Thread knotted: no free adjacent cell. Threads left: {n}.", "annStrappato": "Thread cut. Threads left: {n}.", "strappoUltimo": "It's the last thread: cutting it ends today's game.", "strappoUno": "A cut thread can't be resewn: you'll have 1 left.", "strappoN": "A cut thread can't be resewn: you'll have {n} left.", "labelGold": "You beat the Tailor!", "labelPerfetto": "Perfect thread", "labelElegante": "Elegant thread", "labelRiuscito": "Thread done", "paroleTre": "Three stars", "paroleDue": "Two stars", "paroleUna": "One star", "paroleGold": "Three stars, you beat the Tailor!", "annVittoria": "Win! Exact sum {T} with {C} cells. {parole}.", "annSconfitta": "Out of threads. The Tailor's path is revealed.", "eyebrowVitt": "FILO #{n} · Win", "eyebrow": "FILO #{n}", "datiVinta": "{C} cells · thread {fWin} · Tailor: {L}", "datiPersa": "3 threads used · Tailor: {L} cells", "sottoGold": "{C} cells against its {L}. Today you're the master.", "sottoTre": "Same length as the Tailor: {C} cells. Stitched to perfection.", "sottoDue": "A whisker from the Tailor: {d} cells apart. So close.", "sottoUno": "Exact sum! But the Tailor stitched it in {L} cells. Longer thread tomorrow?", "sottoPersa": "Its path is below: study it. Tomorrow brings a new thread.", "etichettaPersa": "Today the Tailor wins", "streak2": "🔥 2 in a row — the thread starts to hold.", "streak3": "🔥 3 in a row — three knots make a seam.", "streak7": "🔥 7 in a row — a week without losing the thread.", "streak30": "🔥 30 in a row — a month stitched by hand. Chapeau.", "streakN": "🔥 Streak: {n} days", "captionVinta": "The grid tells everything without revealing a thing. Pass it around.", "captionPersa": "Even a loss makes a good story. Dare someone to do better.", "statGiocate": "played", "statVittorie": "wins", "statSerie": "streak", "statMax": "max", "statVittoriePerFilo": "Wins by thread used", "statFiloN": "Thread {n}", "statRecord": "Cell record: ", "statSartoBattuto": "Tailor beaten: ", "statVolte": "{n} times", "copiato": "<span class=\"tick\" aria-hidden=\"true\">✓</span> Copied! Paste it into a chat 🧵", "tieniPremuto": "Press and hold to copy", "giocaIlFilo": "Play FILO #{n}"}, "fr": {"bannerTxt": "<span aria-hidden=\"true\">🧵</span> Un nouveau FILO est là !", "gioca": "Jouer", "nascondiAvviso": "Masquer l'avis", "comeSiGioca": "Comment jouer", "statistiche": "Statistiques", "grigliaLabel": "Grille de jeu, 5 lignes sur 5 colonnes", "strappaIlFilo": "Couper le fil", "chiudi": "Fermer", "helpP": "Reliez les cases avec un fil continu (pas de diagonales) pour atteindre EXACTEMENT la Somme du Jour.", "demoSomma": "Somme <b>14</b>", "regola1": "<span aria-hidden=\"true\">🧵</span> Vous avez 3 fils.", "regola2": "<span aria-hidden=\"true\">⛔</span> Le fil ne se rembobine pas : chaque case est définitive.", "regola3": "<span aria-hidden=\"true\">💥</span> Vous dépassez la somme ? Rompu.", "regola4": "<span aria-hidden=\"true\">🪢</span> Plus d'issue ? Nœud.", "regola5": "<span aria-hidden=\"true\">⭐</span> Plus vous utilisez de cases, plus vous gagnez d'étoiles : battez le Tailleur !", "mondo": "Un nouveau FILO chaque jour, le même pour le monde entier.", "condividiRisultato": "Partager le résultat <span aria-hidden=\"true\">🧵</span>", "prossimoFilo": "Le prochain FILO se coud dans", "leTueStat": "<span aria-hidden=\"true\">📊</span> Vos statistiques", "strappareIlFilo": "Couper le fil ?", "continua": "Continuer", "strappa": "Couper", "sharePreviewLabel": "Aperçu du résultat à partager", "hudTLabel": "Somme du Jour", "cellRiga": "Ligne {r} colonne {c}, valeur {v}", "cellUltima": ", dernière du fil", "cellPos": ", dans le fil, position {p}", "cellSarto": ", parcours du Tailleur", "hudSarto": "Le Tailleur : {L} cases · minimum {min}", "hudFili": "Fils restants : {n} sur 3", "annIniziato": "Fil commencé. Somme {s} sur {T}.", "annPiu": "Plus {v}. Somme {s} sur {T}, {n} cases.", "mossaUsata": "Coup invalide : case déjà utilisée dans ce fil.", "mossaNonAdiacente": "Coup invalide : la case n'est pas adjacente à la dernière.", "restoUno": "Il en reste 1.", "restoN": "Il en reste {n}.", "toastSpezzato": "💥 Crac ! {s} sur {T} : le fil a lâché. {resto}", "toastAnnodato": "🪢 Impasse à {s} sur {T}. {resto}", "toastStrappato": "✂️ Coupé net. {resto}", "annSpezzato": "Fil rompu : somme {s}, supérieure à {T}. Fils restants : {n}.", "annAnnodato": "Fil noué : aucune case libre adjacente. Fils restants : {n}.", "annStrappato": "Fil coupé. Fils restants : {n}.", "strappoUltimo": "C'est le dernier fil : le couper met fin à la partie du jour.", "strappoUno": "Un fil coupé ne se recoud pas : il vous en restera 1.", "strappoN": "Un fil coupé ne se recoud pas : il vous en restera {n}.", "labelGold": "Vous avez battu le Tailleur !", "labelPerfetto": "Fil parfait", "labelElegante": "Fil élégant", "labelRiuscito": "Fil réussi", "paroleTre": "Trois étoiles", "paroleDue": "Deux étoiles", "paroleUna": "Une étoile", "paroleGold": "Trois étoiles, vous avez battu le Tailleur !", "annVittoria": "Victoire ! Somme exacte {T} avec {C} cases. {parole}.", "annSconfitta": "Plus de fils. Le parcours du Tailleur est révélé.", "eyebrowVitt": "FILO #{n} · Victoire", "eyebrow": "FILO #{n}", "datiVinta": "{C} cases · fil {fWin} · Tailleur : {L}", "datiPersa": "3 fils utilisés · Tailleur : {L} cases", "sottoGold": "{C} cases contre ses {L}. Aujourd'hui, le maître c'est vous.", "sottoTre": "Même mesure que le Tailleur : {C} cases. Cousu dans les règles de l'art.", "sottoDue": "À un souffle du Tailleur : {d} cases d'écart. Vous y êtes presque.", "sottoUno": "Somme exacte ! Mais le Tailleur l'a cousue en {L} cases. Un fil plus long demain ?", "sottoPersa": "Son parcours est en dessous : étudiez-le. Demain, un nouveau fil.", "etichettaPersa": "Aujourd'hui le Tailleur l'emporte", "streak2": "🔥 2 d'affilée — le fil commence à tenir.", "streak3": "🔥 3 d'affilée — trois nœuds font une couture.", "streak7": "🔥 7 d'affilée — une semaine sans perdre le fil.", "streak30": "🔥 30 d'affilée — un mois cousu main. Chapeau.", "streakN": "🔥 Série : {n} jours", "captionVinta": "La grille dit tout sans rien dévoiler. Faites-la tourner.", "captionPersa": "Même une défaite fait une belle histoire. Mettez quelqu'un au défi de faire mieux.", "statGiocate": "parties", "statVittorie": "victoires", "statSerie": "série", "statMax": "max", "statVittoriePerFilo": "Victoires par fil utilisé", "statFiloN": "Fil {n}", "statRecord": "Record de cases : ", "statSartoBattuto": "Tailleur battu : ", "statVolte": "{n} fois", "copiato": "<span class=\"tick\" aria-hidden=\"true\">✓</span> Copié ! Collez-le dans une discussion 🧵", "tieniPremuto": "Appuyez longuement pour copier", "giocaIlFilo": "Jouer au FILO #{n}"}, "es": {"bannerTxt": "<span aria-hidden=\"true\">🧵</span> ¡Hay un nuevo FILO!", "gioca": "Jugar", "nascondiAvviso": "Ocultar aviso", "comeSiGioca": "Cómo se juega", "statistiche": "Estadísticas", "grigliaLabel": "Cuadrícula de juego, 5 filas por 5 columnas", "strappaIlFilo": "Cortar el hilo", "chiudi": "Cerrar", "helpP": "Conecta las casillas con un hilo continuo (sin diagonales) hasta lograr EXACTAMENTE la Suma del Día.", "demoSomma": "Suma <b>14</b>", "regola1": "<span aria-hidden=\"true\">🧵</span> Tienes 3 hilos.", "regola2": "<span aria-hidden=\"true\">⛔</span> El hilo no se rebobina: cada casilla es para siempre.", "regola3": "<span aria-hidden=\"true\">💥</span> ¿Te pasas de la suma? Roto.", "regola4": "<span aria-hidden=\"true\">🪢</span> ¿Sin salidas? Nudo.", "regola5": "<span aria-hidden=\"true\">⭐</span> Cuantas más casillas uses, más estrellas: ¡vence al Sastre!", "mondo": "Un nuevo FILO cada día, igual para todo el mundo.", "condividiRisultato": "Compartir el resultado <span aria-hidden=\"true\">🧵</span>", "prossimoFilo": "El próximo FILO se cose en", "leTueStat": "<span aria-hidden=\"true\">📊</span> Tus estadísticas", "strappareIlFilo": "¿Cortar el hilo?", "continua": "Continuar", "strappa": "Cortar", "sharePreviewLabel": "Vista previa del resultado para compartir", "hudTLabel": "Suma del Día", "cellRiga": "Fila {r} columna {c}, valor {v}", "cellUltima": ", última del hilo", "cellPos": ", en el hilo, posición {p}", "cellSarto": ", recorrido del Sastre", "hudSarto": "El Sastre: {L} casillas · mínimo {min}", "hudFili": "Hilos restantes: {n} de 3", "annIniziato": "Hilo iniciado. Suma {s} de {T}.", "annPiu": "Más {v}. Suma {s} de {T}, {n} casillas.", "mossaUsata": "Movimiento no válido: casilla ya usada en este hilo.", "mossaNonAdiacente": "Movimiento no válido: la casilla no es adyacente a la última.", "restoUno": "Queda 1.", "restoN": "Quedan {n}.", "toastSpezzato": "💥 ¡Crac! {s} de {T}: el hilo no aguantó. {resto}", "toastAnnodato": "🪢 Sin salida en {s} de {T}. {resto}", "toastStrappato": "✂️ Corte limpio. {resto}", "annSpezzato": "Hilo roto: suma {s}, superior a {T}. Hilos restantes: {n}.", "annAnnodato": "Hilo anudado: ninguna casilla libre adyacente. Hilos restantes: {n}.", "annStrappato": "Hilo cortado. Hilos restantes: {n}.", "strappoUltimo": "Es el último hilo: cortarlo termina la partida de hoy.", "strappoUno": "Un hilo cortado no se vuelve a coser: te quedará 1.", "strappoN": "Un hilo cortado no se vuelve a coser: te quedarán {n}.", "labelGold": "¡Venciste al Sastre!", "labelPerfetto": "Hilo perfecto", "labelElegante": "Hilo elegante", "labelRiuscito": "Hilo logrado", "paroleTre": "Tres estrellas", "paroleDue": "Dos estrellas", "paroleUna": "Una estrella", "paroleGold": "¡Tres estrellas, venciste al Sastre!", "annVittoria": "¡Victoria! Suma exacta {T} con {C} casillas. {parole}.", "annSconfitta": "Sin hilos. Se revela el recorrido del Sastre.", "eyebrowVitt": "FILO #{n} · Victoria", "eyebrow": "FILO #{n}", "datiVinta": "{C} casillas · hilo {fWin} · Sastre: {L}", "datiPersa": "3 hilos usados · Sastre: {L} casillas", "sottoGold": "{C} casillas contra sus {L}. Hoy el maestro eres tú.", "sottoTre": "La misma medida que el Sastre: {C} casillas. Cosido a la perfección.", "sottoDue": "A un suspiro del Sastre: {d} casillas de diferencia. Casi lo tienes.", "sottoUno": "¡Suma exacta! Pero el Sastre la cosió en {L} casillas. ¿Alargas el hilo mañana?", "sottoPersa": "Su recorrido está abajo: estúdialo. Mañana hay un hilo nuevo.", "etichettaPersa": "Hoy gana el Sastre", "streak2": "🔥 2 seguidos — el hilo empieza a aguantar.", "streak3": "🔥 3 seguidos — tres nudos hacen una costura.", "streak7": "🔥 7 seguidos — una semana sin perder el hilo.", "streak30": "🔥 30 seguidos — un mes cosido a mano. Chapeau.", "streakN": "🔥 Racha: {n} días", "captionVinta": "La cuadrícula lo cuenta todo sin desvelar nada. Hazla circular.", "captionPersa": "Incluso una derrota es una buena historia. Reta a alguien a hacerlo mejor.", "statGiocate": "jugadas", "statVittorie": "victorias", "statSerie": "racha", "statMax": "máx.", "statVittoriePerFilo": "Victorias por hilo usado", "statFiloN": "Hilo {n}", "statRecord": "Récord de casillas: ", "statSartoBattuto": "Sastre vencido: ", "statVolte": "{n} veces", "copiato": "<span class=\"tick\" aria-hidden=\"true\">✓</span> ¡Copiado! Pégalo en un chat 🧵", "tieniPremuto": "Mantén pulsado y copia", "giocaIlFilo": "Juega el FILO #{n}"}, "de": {"bannerTxt": "<span aria-hidden=\"true\">🧵</span> Ein neues FILO ist da!", "gioca": "Spielen", "nascondiAvviso": "Hinweis ausblenden", "comeSiGioca": "So wird gespielt", "statistiche": "Statistiken", "grigliaLabel": "Spielraster, 5 Zeilen mal 5 Spalten", "strappaIlFilo": "Faden abreißen", "chiudi": "Schließen", "helpP": "Verbinde die Felder mit einem durchgehenden Faden (keine Diagonalen), um GENAU die Tagessumme zu erreichen.", "demoSomma": "Summe <b>14</b>", "regola1": "<span aria-hidden=\"true\">🧵</span> Du hast 3 Fäden.", "regola2": "<span aria-hidden=\"true\">⛔</span> Der Faden lässt sich nicht zurückspulen: jedes Feld ist endgültig.", "regola3": "<span aria-hidden=\"true\">💥</span> Über die Summe? Gerissen.", "regola4": "<span aria-hidden=\"true\">🪢</span> Keine Ausgänge mehr? Knoten.", "regola5": "<span aria-hidden=\"true\">⭐</span> Je mehr Felder, desto mehr Sterne: schlag den Schneider!", "mondo": "Jeden Tag ein neues FILO, für die ganze Welt gleich.", "condividiRisultato": "Ergebnis teilen <span aria-hidden=\"true\">🧵</span>", "prossimoFilo": "Das nächste FILO wird genäht in", "leTueStat": "<span aria-hidden=\"true\">📊</span> Deine Statistiken", "strappareIlFilo": "Faden abreißen?", "continua": "Weiter", "strappa": "Abreißen", "sharePreviewLabel": "Vorschau des zu teilenden Ergebnisses", "hudTLabel": "Tagessumme", "cellRiga": "Zeile {r} Spalte {c}, Wert {v}", "cellUltima": ", letztes des Fadens", "cellPos": ", im Faden, Position {p}", "cellSarto": ", Weg des Schneiders", "hudSarto": "Der Schneider: {L} Felder · Minimum {min}", "hudFili": "Verbleibende Fäden: {n} von 3", "annIniziato": "Faden begonnen. Summe {s} von {T}.", "annPiu": "Plus {v}. Summe {s} von {T}, {n} Felder.", "mossaUsata": "Ungültiger Zug: Feld in diesem Faden bereits benutzt.", "mossaNonAdiacente": "Ungültiger Zug: das Feld grenzt nicht an das letzte.", "restoUno": "Noch 1 übrig.", "restoN": "Noch {n} übrig.", "toastSpezzato": "💥 Ratsch! {s} von {T}: der Faden hielt nicht. {resto}", "toastAnnodato": "🪢 Sackgasse bei {s} von {T}. {resto}", "toastStrappato": "✂️ Sauber abgeschnitten. {resto}", "annSpezzato": "Faden gerissen: Summe {s}, über {T}. Verbleibende Fäden: {n}.", "annAnnodato": "Faden verknotet: kein freies Nachbarfeld. Verbleibende Fäden: {n}.", "annStrappato": "Faden abgerissen. Verbleibende Fäden: {n}.", "strappoUltimo": "Es ist der letzte Faden: ihn abzureißen beendet das heutige Spiel.", "strappoUno": "Ein abgerissener Faden lässt sich nicht wieder nähen: dir bleibt 1.", "strappoN": "Ein abgerissener Faden lässt sich nicht wieder nähen: dir bleiben {n}.", "labelGold": "Du hast den Schneider geschlagen!", "labelPerfetto": "Perfekter Faden", "labelElegante": "Eleganter Faden", "labelRiuscito": "Gelungener Faden", "paroleTre": "Drei Sterne", "paroleDue": "Zwei Sterne", "paroleUna": "Ein Stern", "paroleGold": "Drei Sterne, du hast den Schneider geschlagen!", "annVittoria": "Sieg! Exakte Summe {T} mit {C} Feldern. {parole}.", "annSconfitta": "Keine Fäden mehr. Der Weg des Schneiders wird enthüllt.", "eyebrowVitt": "FILO #{n} · Sieg", "eyebrow": "FILO #{n}", "datiVinta": "{C} Felder · Faden {fWin} · Schneider: {L}", "datiPersa": "3 Fäden verbraucht · Schneider: {L} Felder", "sottoGold": "{C} Felder gegen seine {L}. Heute bist du der Meister.", "sottoTre": "Genau wie der Schneider: {C} Felder. Meisterhaft genäht.", "sottoDue": "Hauchdünn hinter dem Schneider: {d} Felder Unterschied. Fast geschafft.", "sottoUno": "Exakte Summe! Doch der Schneider brauchte nur {L} Felder. Morgen längerer Faden?", "sottoPersa": "Sein Weg ist unten: studiere ihn. Morgen gibt es einen neuen Faden.", "etichettaPersa": "Heute gewinnt der Schneider", "streak2": "🔥 2 in Folge — der Faden hält allmählich.", "streak3": "🔥 3 in Folge — drei Knoten ergeben eine Naht.", "streak7": "🔥 7 in Folge — eine Woche ohne den Faden zu verlieren.", "streak30": "🔥 30 in Folge — ein Monat von Hand genäht. Chapeau.", "streakN": "🔥 Serie: {n} Tage", "captionVinta": "Das Raster erzählt alles, ohne etwas zu verraten. Gib es weiter.", "captionPersa": "Auch eine Niederlage ist eine gute Geschichte. Fordere jemanden heraus.", "statGiocate": "gespielt", "statVittorie": "Siege", "statSerie": "Serie", "statMax": "max", "statVittoriePerFilo": "Siege nach genutztem Faden", "statFiloN": "Faden {n}", "statRecord": "Feld-Rekord: ", "statSartoBattuto": "Schneider geschlagen: ", "statVolte": "{n}-mal", "copiato": "<span class=\"tick\" aria-hidden=\"true\">✓</span> Kopiert! Füg es in einen Chat ein 🧵", "tieniPremuto": "Zum Kopieren gedrückt halten", "giocaIlFilo": "FILO #{n} spielen"}, "zh": {"bannerTxt": "<span aria-hidden=\"true\">🧵</span> 有新的 FILO 啦！", "gioca": "开始", "nascondiAvviso": "隐藏提示", "comeSiGioca": "玩法", "statistiche": "统计", "grigliaLabel": "游戏网格，5 行 5 列", "strappaIlFilo": "剪断线", "chiudi": "关闭", "helpP": "用一条连续的线（不能走斜线）连接格子，凑出与今日之和完全相等的数。", "demoSomma": "合计 <b>14</b>", "regola1": "<span aria-hidden=\"true\">🧵</span> 你有 3 根线。", "regola2": "<span aria-hidden=\"true\">⛔</span> 线不能回退：每一格都是永久的。", "regola3": "<span aria-hidden=\"true\">💥</span> 超过总和？断了。", "regola4": "<span aria-hidden=\"true\">🪢</span> 无路可走？打结。", "regola5": "<span aria-hidden=\"true\">⭐</span> 用的格子越多，星星越多：击败裁缝！", "mondo": "每天一个新的 FILO，全世界都一样。", "condividiRisultato": "分享结果 <span aria-hidden=\"true\">🧵</span>", "prossimoFilo": "下一个 FILO 将在以下时间开始", "leTueStat": "<span aria-hidden=\"true\">📊</span> 你的统计", "strappareIlFilo": "要剪断线吗？", "continua": "继续", "strappa": "剪断", "sharePreviewLabel": "待分享结果的预览", "hudTLabel": "今日之和", "cellRiga": "第{r}行 第{c}列，值 {v}", "cellUltima": "，线的末端", "cellPos": "，在线中，位置 {p}", "cellSarto": "，裁缝的路径", "hudSarto": "裁缝：{L} 格 · 最少 {min}", "hudFili": "剩余线：{n} / 3", "annIniziato": "线已开始。合计 {s} / {T}。", "annPiu": "加 {v}。合计 {s} / {T}，{n} 格。", "mossaUsata": "无效操作：该格已在本线中使用。", "mossaNonAdiacente": "无效操作：该格与上一格不相邻。", "restoUno": "还剩 1 根。", "restoN": "还剩 {n} 根。", "toastSpezzato": "💥 啪！{s} / {T}：线没撑住。{resto}", "toastAnnodato": "🪢 走投无路，{s} / {T}。{resto}", "toastStrappato": "✂️ 干脆一剪。{resto}", "annSpezzato": "线断了：合计 {s}，超过 {T}。剩余线：{n}。", "annAnnodato": "线打结：没有相邻的空格。剩余线：{n}。", "annStrappato": "线已剪断。剩余线：{n}。", "strappoUltimo": "这是最后一根线：剪断它就结束今天的对局。", "strappoUno": "剪断的线无法再缝：你还剩 1 根。", "strappoN": "剪断的线无法再缝：你还剩 {n} 根。", "labelGold": "你击败了裁缝！", "labelPerfetto": "完美之线", "labelElegante": "优雅之线", "labelRiuscito": "成功之线", "paroleTre": "三颗星", "paroleDue": "两颗星", "paroleUna": "一颗星", "paroleGold": "三颗星，你击败了裁缝！", "annVittoria": "胜利！合计正好 {T}，用了 {C} 格。{parole}。", "annSconfitta": "线用完了。裁缝的路径揭晓。", "eyebrowVitt": "FILO #{n} · 胜利", "eyebrow": "FILO #{n}", "datiVinta": "{C} 格 · 第{fWin}根线 · 裁缝：{L}", "datiPersa": "用了 3 根线 · 裁缝：{L} 格", "sottoGold": "{C} 格对它的 {L} 格。今天你才是大师。", "sottoTre": "和裁缝一样长：{C} 格。缝得堪称典范。", "sottoDue": "离裁缝就差一点：相差 {d} 格。就快成功了。", "sottoUno": "总和正确！不过裁缝只用了 {L} 格。明天拉长线？", "sottoPersa": "它的路径就在下方，好好研究吧。明天有新的线。", "etichettaPersa": "今天裁缝赢了", "streak2": "🔥 连续 2 天——线开始牢了。", "streak3": "🔥 连续 3 天——三个结成一线缝。", "streak7": "🔥 连续 7 天——一周没断过线。", "streak30": "🔥 连续 30 天——一整月手工缝制。佩服。", "streakN": "🔥 连胜：{n} 天", "captionVinta": "这张网格说尽一切却毫不剧透。分享出去吧。", "captionPersa": "就算输了也是个好故事。挑战别人做得更好。", "statGiocate": "已玩", "statVittorie": "胜率", "statSerie": "连胜", "statMax": "最高", "statVittoriePerFilo": "按用线数统计胜利", "statFiloN": "第{n}根线", "statRecord": "格数纪录：", "statSartoBattuto": "击败裁缝：", "statVolte": "{n} 次", "copiato": "<span class=\"tick\" aria-hidden=\"true\">✓</span> 已复制！粘贴到聊天里 🧵", "tieniPremuto": "长按复制", "giocaIlFilo": "开始 FILO #{n}"}, "pt": {"bannerTxt": "<span aria-hidden=\"true\">🧵</span> Saiu um novo FILO!", "gioca": "Jogar", "nascondiAvviso": "Ocultar aviso", "comeSiGioca": "Como jogar", "statistiche": "Estatísticas", "grigliaLabel": "Grade de jogo, 5 linhas por 5 colunas", "strappaIlFilo": "Cortar o fio", "chiudi": "Fechar", "helpP": "Ligue as casas com um fio contínuo (sem diagonais) até formar EXATAMENTE a Soma do Dia.", "demoSomma": "Soma <b>14</b>", "regola1": "<span aria-hidden=\"true\">🧵</span> Você tem 3 fios.", "regola2": "<span aria-hidden=\"true\">⛔</span> O fio não volta: cada casa é para sempre.", "regola3": "<span aria-hidden=\"true\">💥</span> Passou da soma? Rompeu.", "regola4": "<span aria-hidden=\"true\">🪢</span> Sem saída? Nó.", "regola5": "<span aria-hidden=\"true\">⭐</span> Quanto mais casas usar, mais estrelas: vença o Alfaiate!", "mondo": "Um novo FILO todo dia, igual para o mundo inteiro.", "condividiRisultato": "Compartilhar o resultado <span aria-hidden=\"true\">🧵</span>", "prossimoFilo": "O próximo FILO é costurado em", "leTueStat": "<span aria-hidden=\"true\">📊</span> Suas estatísticas", "strappareIlFilo": "Cortar o fio?", "continua": "Continuar", "strappa": "Cortar", "sharePreviewLabel": "Prévia do resultado para compartilhar", "hudTLabel": "Soma do Dia", "cellRiga": "Linha {r} coluna {c}, valor {v}", "cellUltima": "，última do fio", "cellPos": "，no fio, posição {p}", "cellSarto": "，caminho do Alfaiate", "hudSarto": "O Alfaiate: {L} casas · mínimo {min}", "hudFili": "Fios restantes: {n} de 3", "annIniziato": "Fio iniciado. Soma {s} de {T}.", "annPiu": "Mais {v}. Soma {s} de {T}, {n} casas.", "mossaUsata": "Jogada inválida: casa já usada neste fio.", "mossaNonAdiacente": "Jogada inválida: a casa não é adjacente à última.", "restoUno": "Resta 1.", "restoN": "Restam {n}.", "toastSpezzato": "💥 Crec! {s} de {T}: o fio não aguentou. {resto}", "toastAnnodato": "🪢 Beco sem saída em {s} de {T}. {resto}", "toastStrappato": "✂️ Corte limpo. {resto}", "annSpezzato": "Fio rompido: soma {s}, acima de {T}. Fios restantes: {n}.", "annAnnodato": "Fio com nó: nenhuma casa livre adjacente. Fios restantes: {n}.", "annStrappato": "Fio cortado. Fios restantes: {n}.", "strappoUltimo": "É o último fio: cortá-lo encerra o jogo de hoje.", "strappoUno": "Um fio cortado não se costura de novo: sobrará 1.", "strappoN": "Um fio cortado não se costura de novo: sobrarão {n}.", "labelGold": "Você venceu o Alfaiate!", "labelPerfetto": "Fio perfeito", "labelElegante": "Fio elegante", "labelRiuscito": "Fio bem-feito", "paroleTre": "Três estrelas", "paroleDue": "Duas estrelas", "paroleUna": "Uma estrela", "paroleGold": "Três estrelas, você venceu o Alfaiate!", "annVittoria": "Vitória! Soma exata {T} com {C} casas. {parole}.", "annSconfitta": "Acabaram os fios. O caminho do Alfaiate é revelado.", "eyebrowVitt": "FILO #{n} · Vitória", "eyebrow": "FILO #{n}", "datiVinta": "{C} casas · fio {fWin} · Alfaiate: {L}", "datiPersa": "3 fios usados · Alfaiate: {L} casas", "sottoGold": "{C} casas contra as {L} dele. Hoje o mestre é você.", "sottoTre": "Mesma medida do Alfaiate: {C} casas. Costurado com maestria.", "sottoDue": "A um sopro do Alfaiate: {d} casas de diferença. Quase lá.", "sottoUno": "Soma exata! Mas o Alfaiate costurou em {L} casas. Amanhã estica o fio?", "sottoPersa": "O caminho dele está abaixo: estude-o. Amanhã tem um fio novo.", "etichettaPersa": "Hoje o Alfaiate leva a melhor", "streak2": "🔥 2 seguidos — o fio começa a firmar.", "streak3": "🔥 3 seguidos — três nós fazem uma costura.", "streak7": "🔥 7 seguidos — uma semana sem perder o fio.", "streak30": "🔥 30 seguidos — um mês costurado à mão. Chapeau.", "streakN": "🔥 Sequência: {n} dias", "captionVinta": "A grade conta tudo sem revelar nada. Espalhe.", "captionPersa": "Até uma derrota é uma boa história. Desafie alguém a fazer melhor.", "statGiocate": "jogadas", "statVittorie": "vitórias", "statSerie": "sequência", "statMax": "máx.", "statVittoriePerFilo": "Vitórias por fio usado", "statFiloN": "Fio {n}", "statRecord": "Recorde de casas: ", "statSartoBattuto": "Alfaiate vencido: ", "statVolte": "{n} vezes", "copiato": "<span class=\"tick\" aria-hidden=\"true\">✓</span> Copiado! Cole em um chat 🧵", "tieniPremuto": "Segure para copiar", "giocaIlFilo": "Jogar o FILO #{n}"}, "ja": {"bannerTxt": "<span aria-hidden=\"true\">🧵</span> 新しい FILO が登場！", "gioca": "プレイ", "nascondiAvviso": "通知を隠す", "comeSiGioca": "遊び方", "statistiche": "統計", "grigliaLabel": "ゲーム盤、5 行 5 列", "strappaIlFilo": "糸を切る", "chiudi": "閉じる", "helpP": "マスを一本の連続した糸でつなぎ（斜めは不可）、今日の合計にちょうど一致させよう。", "demoSomma": "合計 <b>14</b>", "regola1": "<span aria-hidden=\"true\">🧵</span> 糸は 3 本。", "regola2": "<span aria-hidden=\"true\">⛔</span> 糸は巻き戻せない。選んだマスは元に戻せません。", "regola3": "<span aria-hidden=\"true\">💥</span> 合計を超えたら？切れる。", "regola4": "<span aria-hidden=\"true\">🪢</span> 行き止まり？結び目。", "regola5": "<span aria-hidden=\"true\">⭐</span> 使うマスが多いほど星も多い。仕立て屋を倒そう！", "mondo": "毎日新しい FILO を、世界中で同じ問題を。", "condividiRisultato": "結果をシェア <span aria-hidden=\"true\">🧵</span>", "prossimoFilo": "次の FILO まで", "leTueStat": "<span aria-hidden=\"true\">📊</span> あなたの統計", "strappareIlFilo": "糸を切りますか？", "continua": "続ける", "strappa": "切る", "sharePreviewLabel": "シェアする結果のプレビュー", "hudTLabel": "今日の合計", "cellRiga": "{r} 行 {c} 列、値 {v}", "cellUltima": "、糸の末尾", "cellPos": "、糸の中、{p} 番目", "cellSarto": "、仕立て屋のルート", "hudSarto": "仕立て屋：{L} マス · 最小 {min}", "hudFili": "残りの糸：{n} / 3", "annIniziato": "糸を開始。合計 {s} / {T}。", "annPiu": "+{v}。合計 {s} / {T}、{n} マス。", "mossaUsata": "無効な操作：このマスはこの糸で使用済みです。", "mossaNonAdiacente": "無効な操作：直前のマスと隣接していません。", "restoUno": "残り 1 本。", "restoN": "残り {n} 本。", "toastSpezzato": "💥 プツン！{s} / {T}：糸がもたなかった。{resto}", "toastAnnodato": "🪢 行き止まり {s} / {T}。{resto}", "toastStrappato": "✂️ すっぱり切った。{resto}", "annSpezzato": "糸が切れた：合計 {s}、{T} を超過。残りの糸：{n}。", "annAnnodato": "糸が結ばれた：隣に空きマスなし。残りの糸：{n}。", "annStrappato": "糸を切った。残りの糸：{n}。", "strappoUltimo": "最後の糸です。切ると今日のゲームは終了します。", "strappoUno": "切った糸は縫い直せません。残り 1 本になります。", "strappoN": "切った糸は縫い直せません。残り {n} 本になります。", "labelGold": "仕立て屋に勝った！", "labelPerfetto": "完璧な糸", "labelElegante": "見事な糸", "labelRiuscito": "成功の糸", "paroleTre": "星三つ", "paroleDue": "星二つ", "paroleUna": "星一つ", "paroleGold": "星三つ、仕立て屋に勝った！", "annVittoria": "勝利！合計ぴったり {T}、{C} マス。{parole}。", "annSconfitta": "糸切れ。仕立て屋のルートが明かされます。", "eyebrowVitt": "FILO #{n} · 勝利", "eyebrow": "FILO #{n}", "datiVinta": "{C} マス · {fWin}本目 · 仕立て屋：{L}", "datiPersa": "糸 3 本使用 · 仕立て屋：{L} マス", "sottoGold": "{C} マス対相手の {L} マス。今日の名人は君だ。", "sottoTre": "仕立て屋と同じ長さ：{C} マス。見事な仕立てだ。", "sottoDue": "仕立て屋まであと一歩：差は {d} マス。もう少し。", "sottoUno": "合計はぴったり！でも仕立て屋は {L} マスで。明日は糸を長く？", "sottoPersa": "そのルートは下に。よく見て。明日は新しい糸だ。", "etichettaPersa": "今日は仕立て屋の勝ち", "streak2": "🔥 2 連続——糸がしっかりしてきた。", "streak3": "🔥 3 連続——結び目三つで一縫い。", "streak7": "🔥 7 連続——一週間、糸を切らさず。", "streak30": "🔥 30 連続——ひと月を手縫いで。お見事。", "streakN": "🔥 連続：{n} 日", "captionVinta": "この盤面は何も明かさず全てを語る。広めよう。", "captionPersa": "負けもいい物語。誰かに勝負を挑もう。", "statGiocate": "プレイ", "statVittorie": "勝率", "statSerie": "連続", "statMax": "最高", "statVittoriePerFilo": "使った糸ごとの勝利", "statFiloN": "{n}本目", "statRecord": "マス数の記録：", "statSartoBattuto": "仕立て屋撃破：", "statVolte": "{n} 回", "copiato": "<span class=\"tick\" aria-hidden=\"true\">✓</span> コピーしました！チャットに貼り付けよう 🧵", "tieniPremuto": "長押しでコピー", "giocaIlFilo": "FILO #{n} をプレイ"}};
+var LANGPREF = (navigator.language || 'it').slice(0,2).toLowerCase();
+var LANG = I18N[LANGPREF] ? LANGPREF : 'it';
+try { document.documentElement.lang = (LANG==='zh'?'zh-Hans':(LANG==='pt'?'pt-BR':LANG)); } catch(e){}
+function TT(k){ var d=I18N[LANG]; if(d && d[k]!=null) return d[k]; return (I18N.it[k]!=null)?I18N.it[k]:k; }
+function TF(k,p){ return TT(k).replace(/\{(\w+)\}/g, function(_,n){ return (p && p[n]!=null)? p[n] : ''; }); }
+function applyStaticI18N(){
+  try {
+    var q=function(s){return document.querySelector(s);};
+    var bt=q('#banner-nuovo-giorno .txt'); if(bt) bt.innerHTML=TT('bannerTxt');
+    var bg=q('#banner-gioca'); if(bg) bg.textContent=TT('gioca');
+    var bc=q('#banner-chiudi'); if(bc) bc.setAttribute('aria-label',TT('nascondiAvviso'));
+    var bh=q('#btn-help'); if(bh) bh.setAttribute('aria-label',TT('comeSiGioca'));
+    var bs=q('#btn-stats'); if(bs) bs.setAttribute('aria-label',TT('statistiche'));
+    var bd=q('#board'); if(bd) bd.setAttribute('aria-label',TT('grigliaLabel'));
+    var st=q('#btn-strappa'); if(st) st.textContent=TT('strappaIlFilo');
+    var ht=q('#help-title'); if(ht) ht.textContent=TT('comeSiGioca');
+    var hp=q('#modal-help p'); if(hp) hp.textContent=TT('helpP');
+    var dt=q('.demo-target'); if(dt) dt.innerHTML=TT('demoSomma');
+    var rg=document.querySelectorAll('.regole li'); for(var i=0;i<rg.length;i++){ var kk='regola'+(i+1); rg[i].innerHTML=TT(kk); }
+    var mo=q('.mondo'); if(mo) mo.textContent=TT('mondo');
+    var s1=q('#btn-share'); if(s1) s1.innerHTML=TT('condividiRisultato');
+    var s2=q('#btn-share-stats'); if(s2) s2.innerHTML=TT('condividiRisultato');
+    var stt=q('#stats-title'); if(stt) stt.textContent=TT('statistiche');
+    var rc=q('#result-countdown'); if(rc) rc.innerHTML=TT('prossimoFilo')+' <span id="countdown-time" aria-hidden="true">--:--:--</span>';
+    var rs=q('#btn-result-stats'); if(rs) rs.innerHTML=TT('leTueStat');
+    var sti=q('#strappo-title'); if(sti) sti.textContent=TT('strappareIlFilo');
+    var sco=q('#btn-strappo-continua'); if(sco) sco.textContent=TT('continua');
+    var scc=q('#btn-strappo-conferma'); if(scc) scc.textContent=TT('strappa');
+    var sp=q('#share-preview'); if(sp) sp.setAttribute('aria-label',TT('sharePreviewLabel'));
+    var tl=q('#hud-T-label'); if(tl) tl.textContent=TT('hudTLabel');
+    var cl=document.querySelectorAll('.iconbtn.close'); for(var j=0;j<cl.length;j++) cl[j].setAttribute('aria-label',TT('chiudi'));
+  } catch(e){}
+}
+
 /* ---- 4.2 RNG — mulberry32 + seed dalla data locale (§7.1-7.2, implementazione esatta) ----
    mulberry32 di Tommy Ettinger, rilasciato nel PUBBLICO DOMINIO (CC0,
    https://gist.github.com/tommyettinger — nessun vincolo di licenza). */
@@ -832,11 +868,11 @@ function buildBoard(){
 function cellLabel(idx){
   var r = ((idx / 5) | 0) + 1, c = (idx % 5) + 1;
   var v = puzzle.valori[idx];
-  var lbl = 'Riga ' + r + ' colonna ' + c + ', valore ' + v;
+  var lbl = TF('cellRiga', {r: r, c: c, v: v});
   var pos = filo.indexOf(idx);
-  if (pos === filo.length - 1 && pos >= 0) lbl += ', ultima del filo';
-  else if (pos >= 0) lbl += ', nel filo, posizione ' + (pos + 1);
-  if (gameOver && puzzle.percorsoSarto.indexOf(idx) >= 0) lbl += ', percorso del Sarto';
+  if (pos === filo.length - 1 && pos >= 0) lbl += TT('cellUltima');
+  else if (pos >= 0) lbl += TF('cellPos', {p: (pos + 1)});
+  if (gameOver && puzzle.percorsoSarto.indexOf(idx) >= 0) lbl += TT('cellSarto');
   return lbl;
 }
 function updateCells(){
@@ -951,12 +987,12 @@ function updateHUD(){
   $('#hud-T').textContent = puzzle.T;
   var minC = Math.ceil(puzzle.T / 9);
   var sr = $('#hud-sarto');
-  sr.textContent = 'Il Sarto: ' + puzzle.L_sarto + ' caselle · minimo ' + minC;
+  sr.textContent = TF('hudSarto', {L: puzzle.L_sarto, min: minC});
   $('#hud-somma').textContent = somma;
   $('#hud-caselle').textContent = filo.length;
   var hf = $('#hud-fili');
   hf.innerHTML = '';
-  hf.setAttribute('aria-label', 'Fili rimasti: ' + filiRimasti() + ' di 3');
+  hf.setAttribute('aria-label', TF('hudFili', {n: filiRimasti()}));
   var esitiEmoji = { spezzato: '💥', annodato: '🪢', strappato: '✂️', vinto: '' };
   for (var i = 0; i < CONFIG.FILI; i++) {
     var slot = document.createElement('span');
@@ -1021,7 +1057,7 @@ function giocaCasella(idx, viaTap){
     somma = v;
     estesoDalDown = true;
     renderAll();
-    annuncia(true, 'Filo iniziato. Somma ' + somma + ' su ' + puzzle.T + '.');
+    annuncia(true, TF('annIniziato', {s: somma, T: puzzle.T}));
     if (document.activeElement && board.contains(document.activeElement)) setFocusIdx(idx, true);
     else setFocusIdx(idx, false);
     valutaEsiti();
@@ -1031,11 +1067,11 @@ function giocaCasella(idx, viaTap){
   /* niente caso speciale per idx === last: casella già visitata → shake (§6.6);
      la ripresa del drag dall'ultima casella è gestita nel pointerdown/pointerup */
   if (filo.indexOf(idx) >= 0) {
-    if (viaTap) { shakeCell(idx); annuncia(false, 'Mossa non valida: casella già usata in questo filo.'); }
+    if (viaTap) { shakeCell(idx); annuncia(false, TT('mossaUsata')); }
     return;
   }
   if (!adiacenti(last, idx)) {
-    if (viaTap) { shakeCell(idx); annuncia(false, "Mossa non valida: la casella non è adiacente all'ultima."); }
+    if (viaTap) { shakeCell(idx); annuncia(false, TT('mossaNonAdiacente')); }
     return;
   }
   filo.push(idx);
@@ -1044,7 +1080,7 @@ function giocaCasella(idx, viaTap){
   updateCells();
   updateHUD();
   animateSeg(last, idx);
-  annuncia(true, 'Più ' + v + '. Somma ' + somma + ' su ' + puzzle.T + ', ' + filo.length + ' caselle.');
+  annuncia(true, TF('annPiu', {v: v, s: somma, T: puzzle.T, n: filo.length}));
   if (document.activeElement && board.contains(document.activeElement)) setFocusIdx(idx, true);
   else setFocusIdx(idx, false);
   valutaEsiti();
@@ -1091,7 +1127,7 @@ function endDrag(e){
     var idx = cellFromPoint(e.clientX, e.clientY);
     if (idx === last) {
       shakeCell(last);
-      annuncia(false, 'Mossa non valida: casella già usata in questo filo.');
+      annuncia(false, TT('mossaUsata'));
     }
   }
   dragging = false; downSuUltima = false;
@@ -1131,10 +1167,10 @@ function vibra(pattern){
   try { if (navigator.vibrate) navigator.vibrate(pattern); } catch(e) {}
 }
 function testoToastEsito(esito, s, n){
-  var resto = (n === 1) ? 'Te ne resta 1.' : 'Te ne restano ' + n + '.';
-  if (esito === 'spezzato') return '💥 Crack! ' + s + ' su ' + puzzle.T + ': il filo non ha retto. ' + resto;
-  if (esito === 'annodato') return '🪢 Vicolo cieco a ' + s + ' su ' + puzzle.T + '. ' + resto;
-  return '✂️ Strappo netto. ' + resto;
+  var resto = (n === 1) ? TT('restoUno') : TF('restoN', {n: n});
+  if (esito === 'spezzato') return TF('toastSpezzato', {s: s, T: puzzle.T, resto: resto});
+  if (esito === 'annodato') return TF('toastAnnodato', {s: s, T: puzzle.T, resto: resto});
+  return TF('toastStrappato', {resto: resto});
 }
 /* Sequenze animate esito (UX §7.3, §7.4) poi conclusione del filo */
 function filoConcluso(esito){
@@ -1147,9 +1183,9 @@ function filoConcluso(esito){
     somma = 0;
     resetSvgClassi();
     var n = filiRimasti();
-    if (esito === 'spezzato') annuncia(false, 'Filo spezzato: somma ' + sommaFilo + ', superiore a ' + puzzle.T + '. Fili rimasti: ' + n + '.');
-    else if (esito === 'annodato') annuncia(false, 'Filo annodato: nessuna casella libera adiacente. Fili rimasti: ' + n + '.');
-    else annuncia(true, 'Filo strappato. Fili rimasti: ' + n + '.');
+    if (esito === 'spezzato') annuncia(false, TF('annSpezzato', {s: sommaFilo, T: puzzle.T, n: n}));
+    else if (esito === 'annodato') annuncia(false, TF('annAnnodato', {n: n}));
+    else annuncia(true, TF('annStrappato', {n: n}));
     if (n === 0) {
       salvaOggi('in-corso'); // i fili conclusi prima della valutazione finale
       sconfitta();
@@ -1204,9 +1240,9 @@ $('#btn-strappa').addEventListener('click', function(){
   if (filo.length === 0 || gameOver || lockInput) return;
   var n = filiRimasti() - 1; // fili DOPO lo strappo
   var body;
-  if (n === 0) body = "È l'ultimo filo: strapparlo chiude la partita di oggi.";
-  else if (n === 1) body = 'Un filo strappato non si ricuce: te ne resterà 1.';
-  else body = 'Un filo strappato non si ricuce: te ne resteranno ' + n + '.';
+  if (n === 0) body = TT('strappoUltimo');
+  else if (n === 1) body = TT('strappoUno');
+  else body = TF('strappoN', {n: n});
   $('#strappo-body').textContent = body;
   openModal('modal-strappo', $('#btn-strappa'));
 });
@@ -1257,9 +1293,9 @@ function vittoria(){
   aggiornaStats(true, fili.length, C, res.gold);
   salvaOggi('vinta');
   vibra([40, 60, 120]);
-  var parole = res.gold ? 'Tre stelle, hai battuto il Sarto!' :
-    (res.stelle === 3 ? 'Tre stelle' : res.stelle === 2 ? 'Due stelle' : 'Una stella');
-  annuncia(false, 'Vittoria! Somma esatta ' + puzzle.T + ' con ' + C + ' caselle. ' + parole + '.');
+  var parole = res.gold ? TT('paroleGold') :
+    (res.stelle === 3 ? TT('paroleTre') : res.stelle === 2 ? TT('paroleDue') : TT('paroleUna'));
+  annuncia(false, TF('annVittoria', {T: puzzle.T, C: C, parole: parole}));
   renderAll();
   revealPoiRisultato();
 }
@@ -1270,7 +1306,7 @@ function sconfitta(){
   somma = 0;
   aggiornaStats(false, 3, 0, false);
   salvaOggi('persa');
-  annuncia(false, 'Fili finiti. Il percorso del Sarto viene rivelato.');
+  annuncia(false, TT('annSconfitta'));
   lockInput = false;
   renderAll();
   revealPoiRisultato();
@@ -1315,7 +1351,7 @@ function condividi(fallbackContainerId){
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(function(){
-        showToast('<span class="tick" aria-hidden="true">✓</span> Copiato! Incollalo in chat 🧵', true);
+        showToast(TT('copiato'), true);
       }, function(){ mostraFallbackTextarea(fallbackContainerId, text); });
       return;
     }
@@ -1334,7 +1370,7 @@ function mostraFallbackTextarea(containerId, text){
     ta.value = text;
     var cap = document.createElement('div');
     cap.className = 'caption';
-    cap.textContent = 'Tieni premuto e copia';
+    cap.textContent = TT('tieniPremuto');
     box.appendChild(ta);
     box.appendChild(cap);
     try { ta.focus(); ta.select(); } catch(e) {}
@@ -1470,7 +1506,7 @@ function stopCountdown(){
 function apriRisultato(){
   var vinta = esitoFinale === 'vinta';
   var L = puzzle.L_sarto;
-  $('#result-eyebrow').textContent = 'FILO #' + puzzle.numero + (vinta ? ' · Vittoria' : '');
+  $('#result-eyebrow').textContent = vinta ? TF('eyebrowVitt', {n: puzzle.numero}) : TF('eyebrow', {n: puzzle.numero});
   var stelleEl = $('#result-stelle');
   stelleEl.innerHTML = '';
   if (vinta) {
@@ -1498,18 +1534,19 @@ function apriRisultato(){
   var d = L - C;
   if (vinta) {
     var res = calcolaStelle(C, L);
-    $('#result-etichetta').textContent = res.label;
-    $('#result-dati').textContent = C + ' caselle · ' + fWin + '° filo · Sarto: ' + L;
+    $('#result-etichetta').textContent = res.gold ? TT('labelGold')
+      : (res.stelle === 3 ? TT('labelPerfetto') : res.stelle === 2 ? TT('labelElegante') : TT('labelRiuscito'));
+    $('#result-dati').textContent = TF('datiVinta', {C: C, fWin: fWin, L: L});
     var sotto;
-    if (res.gold) sotto = C + ' caselle contro le sue ' + L + '. Oggi il maestro sei tu.';
-    else if (res.stelle === 3) sotto = "Stessa misura del Sarto: " + C + " caselle. Cucito a regola d'arte.";
-    else if (res.stelle === 2) sotto = 'A un soffio dal Sarto: ' + d + ' caselle di differenza. Ci sei quasi.';
-    else sotto = "Somma esatta! Il Sarto però l'ha cucita in " + L + " caselle. Domani allunghi il filo?";
+    if (res.gold) sotto = TF('sottoGold', {C: C, L: L});
+    else if (res.stelle === 3) sotto = TF('sottoTre', {C: C});
+    else if (res.stelle === 2) sotto = TF('sottoDue', {d: d});
+    else sotto = TF('sottoUno', {L: L});
     $('#result-sottoriga').textContent = sotto;
   } else {
-    $('#result-etichetta').textContent = 'Oggi il Sarto la spunta';
-    $('#result-dati').textContent = '3 fili usati · Sarto: ' + L + ' caselle';
-    $('#result-sottoriga').textContent = "Il suo percorso è qui sotto: studialo. Domani c'è un filo nuovo.";
+    $('#result-etichetta').textContent = TT('etichettaPersa');
+    $('#result-dati').textContent = TF('datiPersa', {L: L});
+    $('#result-sottoriga').textContent = TT('sottoPersa');
   }
   // mini-griglia: mio filo dorato + Sarto tratteggiato
   var mg = $('#minigrid');
@@ -1526,21 +1563,14 @@ function apriRisultato(){
   var sk = streakEffettiva();
   var rs = $('#result-streak');
   if (vinta && sk >= 2) {
-    var milestone = {
-      2: '🔥 2 di fila — il filo comincia a tenere.',
-      3: '🔥 3 di fila — tre nodi fanno una cucitura.',
-      7: '🔥 7 di fila — una settimana senza perdere il filo.',
-      30: '🔥 30 di fila — un mese cucito a mano. Chapeau.'
-    };
-    rs.textContent = milestone[sk] || ('🔥 Serie: ' + sk + ' giorni');
+    var milestone = { 2: TT('streak2'), 3: TT('streak3'), 7: TT('streak7'), 30: TT('streak30') };
+    rs.textContent = milestone[sk] || TF('streakN', {n: sk});
     rs.hidden = false;
   } else {
     rs.hidden = true;
   }
   $('#share-preview').textContent = buildShareText();
-  $('#share-caption').textContent = vinta
-    ? 'La griglia racconta tutto senza svelare niente. Falla girare.'
-    : 'Anche una sconfitta è una bella storia. Sfida qualcuno a far meglio.';
+  $('#share-caption').textContent = vinta ? TT('captionVinta') : TT('captionPersa');
   $('#fallback-result').hidden = true;
   risultatoMostrato = true;
   // modal auto-aperto: alla chiusura il focus va su 📊 (UX §9.3)
@@ -1555,23 +1585,23 @@ function renderStats(){
   var maxDist = Math.max(1, stats.distFili[0], stats.distFili[1], stats.distFili[2]);
   var html = '';
   html += '<div id="stats-top">';
-  html += '<div><div class="big">' + stats.giocate + '</div><div class="caption">giocate</div></div>';
-  html += '<div><div class="big">' + pct + '%</div><div class="caption">vittorie</div></div>';
-  html += '<div><div class="big"><span aria-hidden="true">🔥</span> ' + sk + '</div><div class="caption">serie</div></div>';
-  html += '<div><div class="big">' + stats.maxStreak + '</div><div class="caption">max</div></div>';
+  html += '<div><div class="big">' + stats.giocate + '</div><div class="caption">' + TT('statGiocate') + '</div></div>';
+  html += '<div><div class="big">' + pct + '%</div><div class="caption">' + TT('statVittorie') + '</div></div>';
+  html += '<div><div class="big"><span aria-hidden="true">🔥</span> ' + sk + '</div><div class="caption">' + TT('statSerie') + '</div></div>';
+  html += '<div><div class="big">' + stats.maxStreak + '</div><div class="caption">' + TT('statMax') + '</div></div>';
   html += '</div>';
-  html += '<div id="stats-dist"><h3>Vittorie per filo usato</h3>';
+  html += '<div id="stats-dist"><h3>' + TT('statVittoriePerFilo') + '</h3>';
   for (var i = 0; i < 3; i++) {
     var v = stats.distFili[i];
     var w = v > 0 ? Math.max(4, Math.round(v / maxDist * 100)) : 0;
-    html += '<div class="bar-row"><span class="lbl">' + (i + 1) + '° filo</span>' +
+    html += '<div class="bar-row"><span class="lbl">' + TF('statFiloN', {n: (i + 1)}) + '</span>' +
       '<span class="bar-track"><span class="bar-fill" style="width:' + w + '%"></span></span>' +
       '<span class="val">' + v + '</span></div>';
   }
   html += '</div>';
   html += '<div id="stats-extra">';
-  html += '<div>Record caselle: <b>' + stats.recordCaselle + '/25</b></div>';
-  html += '<div>Sarto battuto: <b>' + stats.sartoBattuto + ' volte</b> <span aria-hidden="true">🥇</span></div>';
+  html += '<div>' + TT('statRecord') + '<b>' + stats.recordCaselle + '/25</b></div>';
+  html += '<div>' + TT('statSartoBattuto') + '<b>' + TF('statVolte', {n: stats.sartoBattuto}) + '</b> <span aria-hidden="true">🥇</span></div>';
   html += '</div>';
   b.innerHTML = html;
   $('#stats-cta-wrap').hidden = !gameOver;
@@ -1760,11 +1790,12 @@ function bootGiorno(){
   }
 }
 function aggiornaTitoloOnboarding(){
-  $('#btn-onboard-play').textContent = 'Gioca il FILO #' + puzzle.numero;
+  $('#btn-onboard-play').textContent = TF('giocaIlFilo', {n: puzzle.numero});
 }
 
 stats = store.get('filo.stats', null) || defaultStats();
 if (!Array.isArray(stats.distFili) || stats.distFili.length !== 3) stats.distFili = [0, 0, 0];
+applyStaticI18N();
 bootGiorno();
 
 /* ---- Debug/QA (§7.6): SOLO con location.hash === '#debug' ---- */

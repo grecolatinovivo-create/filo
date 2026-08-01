@@ -97,5 +97,99 @@
 
   <footer>FILO — © 2026 · <a href="/gioca" style="color:var(--gold)">gioca nel browser</a></footer>
 </main>
+
+<script>
+/* i18n landing (8 lingue): segue la lingua del browser, default italiano.
+   Non tocca link/animazioni: sostituisce solo i testi visibili. */
+(function(){
+  var I18N = {
+    it:{tag:"Un filo. Una somma. Ogni giorno.",
+        sub:"Il puzzle quotidiano dei numeri: traccia un filo continuo sulla griglia 5×5 fino alla Somma del Giorno. Uguale per tutti, ovunque.",
+        app:"Scarica su App Store",soon:"In arrivo su App Store — intanto puoi provarlo nel browser.",web:"Gioca ora nel browser",
+        feats:["🆓 Gratis","🔒 Nessun tracciamento","📴 Offline","🧵 Un puzzle al giorno"],
+        how:"Come si gioca",
+        li:["Ogni giorno una griglia 5×5 di numeri e una <strong>Somma del Giorno</strong>.",
+            "Traccia un <strong>filo</strong> continuo di caselle adiacenti per fare <strong>esattamente</strong> quella somma.",
+            "Hai <strong>tre fili</strong>: batti il Sarto e condividi il risultato, stile Wordle."],
+        foot:'FILO — © 2026 · <a href="/gioca" style="color:var(--gold)">gioca nel browser</a>'},
+    en:{tag:"One thread. One sum. Every day.",
+        sub:"The daily number puzzle: trace one continuous thread on the 5×5 grid up to the Daily Sum. The same for everyone, everywhere.",
+        app:"Download on the App Store",soon:"Coming to the App Store — meanwhile you can try it in your browser.",web:"Play now in your browser",
+        feats:["🆓 Free","🔒 No tracking","📴 Offline","🧵 One puzzle a day"],
+        how:"How to play",
+        li:["Every day a 5×5 grid of numbers and a <strong>Daily Sum</strong>.",
+            "Trace a continuous <strong>thread</strong> of adjacent cells to make <strong>exactly</strong> that sum.",
+            "You have <strong>three threads</strong>: beat the Tailor and share your result, Wordle-style."],
+        foot:'FILO — © 2026 · <a href="/gioca" style="color:var(--gold)">play in your browser</a>'},
+    fr:{tag:"Un fil. Une somme. Chaque jour.",
+        sub:"Le puzzle quotidien de chiffres : tracez un fil continu sur la grille 5×5 jusqu'à la Somme du Jour. Le même pour tous, partout.",
+        app:"Télécharger sur l'App Store",soon:"Bientôt sur l'App Store — en attendant, essayez-le dans le navigateur.",web:"Jouer maintenant dans le navigateur",
+        feats:["🆓 Gratuit","🔒 Aucun suivi","📴 Hors ligne","🧵 Un puzzle par jour"],
+        how:"Comment jouer",
+        li:["Chaque jour une grille 5×5 de chiffres et une <strong>Somme du Jour</strong>.",
+            "Tracez un <strong>fil</strong> continu de cases adjacentes pour obtenir <strong>exactement</strong> cette somme.",
+            "Vous avez <strong>trois fils</strong> : battez le Tailleur et partagez votre résultat, façon Wordle."],
+        foot:'FILO — © 2026 · <a href="/gioca" style="color:var(--gold)">jouer dans le navigateur</a>'},
+    es:{tag:"Un hilo. Una suma. Cada día.",
+        sub:"El puzzle diario de números: traza un hilo continuo en la cuadrícula 5×5 hasta la Suma del Día. Igual para todos, en todas partes.",
+        app:"Descargar en el App Store",soon:"Próximamente en el App Store — mientras tanto, pruébalo en el navegador.",web:"Jugar ahora en el navegador",
+        feats:["🆓 Gratis","🔒 Sin rastreo","📴 Sin conexión","🧵 Un puzzle al día"],
+        how:"Cómo se juega",
+        li:["Cada día una cuadrícula 5×5 de números y una <strong>Suma del Día</strong>.",
+            "Traza un <strong>hilo</strong> continuo de casillas adyacentes para lograr <strong>exactamente</strong> esa suma.",
+            "Tienes <strong>tres hilos</strong>: vence al Sastre y comparte tu resultado, estilo Wordle."],
+        foot:'FILO — © 2026 · <a href="/gioca" style="color:var(--gold)">jugar en el navegador</a>'},
+    de:{tag:"Ein Faden. Eine Summe. Jeden Tag.",
+        sub:"Das tägliche Zahlenrätsel: ziehe einen durchgehenden Faden auf dem 5×5-Raster bis zur Tagessumme. Für alle gleich, überall.",
+        app:"Im App Store laden",soon:"Bald im App Store — bis dahin kannst du es im Browser ausprobieren.",web:"Jetzt im Browser spielen",
+        feats:["🆓 Kostenlos","🔒 Kein Tracking","📴 Offline","🧵 Ein Rätsel pro Tag"],
+        how:"So wird gespielt",
+        li:["Jeden Tag ein 5×5-Raster aus Zahlen und eine <strong>Tagessumme</strong>.",
+            "Ziehe einen durchgehenden <strong>Faden</strong> aus benachbarten Feldern, um <strong>genau</strong> diese Summe zu erreichen.",
+            "Du hast <strong>drei Fäden</strong>: schlag den Schneider und teile dein Ergebnis, Wordle-Style."],
+        foot:'FILO — © 2026 · <a href="/gioca" style="color:var(--gold)">im Browser spielen</a>'},
+    zh:{tag:"一条线。一个和。每一天。",
+        sub:"每日数字谜题：在 5×5 网格上画一条连续的线，凑出今日之和。全世界都一样。",
+        app:"在 App Store 下载",soon:"即将登陆 App Store——你可以先在浏览器里试玩。",web:"立即在浏览器里玩",
+        feats:["🆓 免费","🔒 无追踪","📴 离线","🧵 每天一题"],
+        how:"玩法",
+        li:["每天一张 5×5 数字网格和一个<strong>今日之和</strong>。",
+            "沿相邻格子画一条连续的<strong>线</strong>，凑出<strong>正好</strong>等于这个和。",
+            "你有<strong>三根线</strong>：击败裁缝并分享结果，Wordle 风格。"],
+        foot:'FILO — © 2026 · <a href="/gioca" style="color:var(--gold)">在浏览器里玩</a>'},
+    pt:{tag:"Um fio. Uma soma. Todo dia.",
+        sub:"O quebra-cabeça diário de números: trace um fio contínuo na grade 5×5 até a Soma do Dia. Igual para todos, em qualquer lugar.",
+        app:"Baixar na App Store",soon:"Em breve na App Store — enquanto isso, experimente no navegador.",web:"Jogar agora no navegador",
+        feats:["🆓 Grátis","🔒 Sem rastreamento","📴 Offline","🧵 Um quebra-cabeça por dia"],
+        how:"Como jogar",
+        li:["Todo dia uma grade 5×5 de números e uma <strong>Soma do Dia</strong>.",
+            "Trace um <strong>fio</strong> contínuo de casas adjacentes para formar <strong>exatamente</strong> essa soma.",
+            "Você tem <strong>três fios</strong>: vença o Alfaiate e compartilhe o resultado, estilo Wordle."],
+        foot:'FILO — © 2026 · <a href="/gioca" style="color:var(--gold)">jogar no navegador</a>'},
+    ja:{tag:"一本の糸。一つの合計。毎日。",
+        sub:"毎日の数字パズル：5×5 の盤面に一本の連続した糸を引き、今日の合計を目指そう。世界中どこでも同じ問題。",
+        app:"App Store でダウンロード",soon:"App Store に近日登場——それまではブラウザで試せます。",web:"今すぐブラウザで遊ぶ",
+        feats:["🆓 無料","🔒 トラッキングなし","📴 オフライン","🧵 1日1問"],
+        how:"遊び方",
+        li:["毎日、数字の 5×5 盤面と<strong>今日の合計</strong>。",
+            "隣り合うマスをつないで一本の<strong>糸</strong>を引き、その合計に<strong>ちょうど</strong>一致させよう。",
+            "糸は<strong>3 本</strong>：仕立て屋を倒して結果をシェア、Wordle 風に。"],
+        foot:'FILO — © 2026 · <a href="/gioca" style="color:var(--gold)">ブラウザで遊ぶ</a>'}
+  };
+  var pref = (navigator.language || 'it').slice(0,2).toLowerCase();
+  var L = I18N[pref] ? pref : 'it';
+  document.documentElement.lang = (L==='zh'?'zh-Hans':(L==='pt'?'pt-BR':L));
+  var t = I18N[L];
+  function put(sel, html){ var el = document.querySelector(sel); if (el) el.innerHTML = html; }
+  put('.tag', t.tag); put('.sub', t.sub);
+  put('.btn-app', t.app); put('.soon', t.soon); put('.btn-web', t.web);
+  put('.how h2', t.how);
+  var fs = document.querySelectorAll('.feats span');
+  for (var i=0;i<fs.length && i<t.feats.length;i++) fs[i].textContent = t.feats[i];
+  var lis = document.querySelectorAll('.how ol li');
+  for (var j=0;j<lis.length && j<t.li.length;j++) lis[j].innerHTML = t.li[j];
+  put('footer', t.foot);
+})();
+</script>
 </body>
 </html>

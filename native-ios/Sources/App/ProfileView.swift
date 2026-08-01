@@ -19,6 +19,7 @@ struct ProfileView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     header
                     statoAccount
+                    if store.isSandbox { testerSezione }
                     temiSezione
                     archivioSezione
                     infoSezione
@@ -88,6 +89,24 @@ struct ProfileView: View {
         .padding(16)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.border, lineWidth: 1))
+    }
+
+    // MARK: Modalità tester (solo TestFlight/sandbox)
+
+    private var testerSezione: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Toggle(isOn: $store.testerUnlock) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Modalità tester").font(.body.weight(.semibold)).foregroundStyle(Theme.text)
+                    Text("Sblocca tutti gli extra senza acquisto (solo in test).")
+                        .font(.caption).foregroundStyle(Theme.textMuted)
+                }
+            }
+            .tint(Theme.filo)
+        }
+        .padding(16)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.filo.opacity(0.4), lineWidth: 1))
     }
 
     // MARK: Temi

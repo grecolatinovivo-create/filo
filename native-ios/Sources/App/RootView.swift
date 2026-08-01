@@ -31,6 +31,7 @@ struct RootView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.bottom, 32)
                 }
+                .scrollBounceBehavior(.basedOnSize)   // niente rimbalzo se il contenuto sta a schermo
             }
 
             if vm.showNuovoGiornoBanner { bannerNuovoGiorno }

@@ -17,9 +17,32 @@ final class Store: ObservableObject {
     @Published private(set) var inCorso = false
     @Published var messaggio: String?
 
+    /// Sblocco per il TESTER (solo build TestFlight/sandbox o DEBUG): permette
+    /// di provare tutti gli extra senza acquisto. Invisibile nella build di
+    /// produzione dell'App Store.
+    @Published var testerUnlock: Bool {
+        didSet {
+            UserDefaults.standard.set(testerUnlock, forKey: "filo.tester")
+            ricalcola()
+        }
+    }
+
+    private var entitlementPro = false
     private var updatesTask: Task<Void, Never>?
 
+    /// True quando l'app gira in ambiente sandbox (TestFlight o acquisto di
+    /// prova). In quel caso mostriamo l'interruttore tester.
+    var isSandbox: Bool {
+        #if DEBUG
+        return true
+        #else
+        return Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt"
+        #endif
+    }
+
     init() {
+        testerUnlock = UserDefaults.standard.bool(forKey: "filo.tester")
+        ricalcola()
         // Ascolta le transazioni in arrivo (acquisti su altri dispositivi,
         // ripristini automatici, ecc.) per l'intera vita dell'app.
         updatesTask = Task { [weak self] in
@@ -29,6 +52,9 @@ final class Store: ObservableObject {
         }
         Task { await bootstrap() }
     }
+
+    /// isPro = diritto d'acquisto firmato da Apple OPPURE sblocco tester.
+    private func ricalcola() { isPro = entitlementPro || testerUnlock }
 
     /// Carica il prodotto e lo stato dei diritti all'avvio.
     func bootstrap() async {
@@ -94,13 +120,15 @@ final class Store: ObservableObject {
                 pro = true
             }
         }
-        isPro = pro
+        entitlementPro = pro
+        ricalcola()
     }
 
     private func gestisci(verifica risultato: VerificationResult<Transaction>) async {
         guard case .verified(let t) = risultato else { return }
         if t.productID == Self.extraID, t.revocationDate == nil {
-            isPro = true
+            entitlementPro = true
+            ricalcola()
         }
         await t.finish()
     }

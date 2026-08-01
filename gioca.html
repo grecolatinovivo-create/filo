@@ -1,0 +1,1786 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<!-- ===== 1. HEAD ===== -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101418">
+<title>FILO — il puzzle quotidiano</title>
+<meta name="description" content="FILO: ogni giorno una griglia 5×5, un numero da raggiungere e tre fili per cucire il percorso perfetto prima che il Sarto la spunti.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="FILO — il puzzle quotidiano">
+<meta property="og:description" content="Ogni giorno una griglia 5×5, un numero da raggiungere e tre fili per battere il Sarto.">
+<meta property="og:url" content="https://filo-game-liard.vercel.app">
+<meta property="og:site_name" content="FILO">
+<meta property="og:locale" content="it_IT">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="FILO — il puzzle quotidiano">
+<meta name="twitter:description" content="Ogni giorno una griglia 5×5, un numero da raggiungere e tre fili per battere il Sarto.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23101418'/%3E%3Cpath d='M22 72 Q40 18 62 46 T82 34' stroke='%23E8B84B' stroke-width='7' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='82' cy='34' r='5' fill='%23E8B84B'/%3E%3C/svg%3E">
+<style>
+/* ===== 2. CSS ===== */
+
+/* ---- 2.1 Custom properties (design system UX_SPEC §2) ---- */
+:root{
+  /* Colori — SOLO questi, sempre via custom property */
+  --bg:         #101418;
+  --surface:    #1B222B;
+  --surface-2:  #232C37;
+  --border:     #2C3642;
+  --text:       #ECEFF3;
+  --text-muted: #97A3B2;
+  --filo:       #E8B84B;
+  --filo-hover: #F0C563;
+  --filo-scuro: #8A6A1F;   /* SOLO bordi decorativi */
+  --sarto:      #F5E6BC;
+  --ok:         #43A06B;
+  --spezzato:   #E56060;
+  --annodato:   #6C93E4;
+  --overlay:    rgba(8,10,13,.72);
+  /* Derivati (alpha) dei colori sopra, definiti come token (nessun hex nei componenti) */
+  --ultima-ring:     rgba(232,184,75,.4);
+  --ultima-ring-dim: rgba(232,184,75,.15);
+  --spezzato-a12:    rgba(229,96,96,.12);
+  --spezzato-a20:    rgba(229,96,96,.2);
+  --shadow-filo:     rgba(0,0,0,.4);
+
+  /* Font */
+  --font-ui:  -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-num: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, monospace;
+
+  /* Spaziatura (scala 4px) */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px;
+  --space-4: 16px; --space-6: 24px; --space-8: 32px;
+
+  /* Forme */
+  --radius-cell: 10px; --radius-card: 16px; --radius-btn: 999px;
+
+  /* Ombre */
+  --shadow-1: 0 2px 8px rgba(0,0,0,.35);
+  --shadow-2: 0 12px 32px rgba(0,0,0,.5);
+
+  /* Motion */
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 400ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in:  cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-std: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Focus ring (UX_SPEC §5.0) */
+  --ring: 0 0 0 2px var(--bg), 0 0 0 5px var(--filo);
+}
+
+/* ---- 2.2 Reset minimale + layout base ---- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 100%; overscroll-behavior: none; }
+body{
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  line-height: 1.6;
+  min-height: 100vh;
+  padding-top: env(safe-area-inset-top);
+  overscroll-behavior: none;            /* blocca il pull-to-refresh e il rimbalzo */
+}
+main{
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 var(--space-4) var(--space-8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+:focus { outline: none; }
+:focus-visible { box-shadow: var(--ring); }
+button{ font-family: var(--font-ui); cursor: pointer; color: inherit; background: none; border: none; }
+.sr-only{
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.caption{
+  font-size: .8125rem; font-weight: 500; line-height: 1.3;
+  text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted);
+}
+
+/* ---- 2.3 Header e HUD ---- */
+header{
+  position: sticky; top: 0; z-index: 10;
+  height: 56px; background: var(--bg);
+  display: flex; align-items: center; justify-content: space-between;
+  max-width: 480px; margin: 0 auto; padding: 0 var(--space-2);
+}
+.logo{
+  font-weight: 800; font-size: 1.75rem; line-height: 1;
+  letter-spacing: .35em; padding-left: .35em; /* compensa l'ultimo spazio */
+  user-select: none;
+}
+.iconbtn{
+  width: 44px; height: 44px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-muted); font-size: 1.25rem; font-weight: 700;
+  transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out);
+}
+@media (hover:hover){ .iconbtn:hover{ background: var(--surface); color: var(--text); } }
+.iconbtn:active{ background: var(--surface-2); transform: scale(.92); }
+
+#hud{ text-align: center; user-select: none; padding-top: var(--space-2); }
+#hud-T{
+  font-family: var(--font-num); font-weight: 700; font-size: 3rem; line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+#hud-sarto{ margin-top: var(--space-1); }
+#hud-row{
+  display: flex; flex-wrap: wrap; row-gap: var(--space-1);
+  justify-content: center; align-items: baseline; gap: var(--space-4);
+  margin-top: var(--space-3); margin-bottom: var(--space-3);
+}
+#hud-row .num{
+  font-family: var(--font-num); font-weight: 600; font-size: 1.125rem; line-height: 1.2;
+  font-variant-numeric: tabular-nums; color: var(--text);
+}
+#hud-fili{ font-size: 1.125rem; }
+#hud-fili .filo-slot{ margin-left: 2px; }
+#hud-fili .filo-slot.perso .thread{ opacity: .25; }
+
+/* ---- 2.4 Griglia e caselle ---- */
+#board-wrap{
+  position: relative;
+  width: min(100vw - 32px, 420px);
+  user-select: none;
+  -webkit-user-select: none;
+}
+#board{
+  display: grid;
+  grid-template-rows: repeat(5, 1fr);
+  gap: 6px;
+  touch-action: none;
+}
+#board .row{ display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+#board.finita{ pointer-events: none; }
+#board-wrap.board-shake{ animation: boardshake 200ms linear; }
+.cell{
+  position: relative; z-index: 1;
+  aspect-ratio: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-cell);
+  color: var(--text);
+  font-family: var(--font-num); font-weight: 600; font-size: 1.5rem; line-height: 1;
+  font-variant-numeric: tabular-nums;
+  display: flex; align-items: center; justify-content: center;
+  transition: background-color 160ms var(--ease-std), color 160ms var(--ease-std),
+              border-color var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out);
+  outline: 2px dashed transparent; outline-offset: -2px;
+}
+@media (hover:hover){ #board:not(.finita) .cell:not(.in-filo):hover{ border-color: var(--filo); } }
+.cell:active{ transform: scale(.94); }
+.cell.in-filo{
+  background: var(--filo); color: var(--bg); border-color: var(--filo-scuro);
+}
+.cell .ord{
+  position: absolute; top: 3px; right: 5px;
+  font-size: .75rem; font-weight: 700; line-height: 1; color: var(--bg);
+  opacity: 0; transition: opacity 160ms var(--ease-std);
+}
+.cell.in-filo .ord{ opacity: 1; }
+.cell.ultima{ animation: pulse-ultima 1200ms ease-in-out infinite alternate; }
+.cell.ultima:focus-visible{ box-shadow: var(--ring), 0 0 0 3px var(--ultima-ring); animation: none; }
+.cell.sarto{ outline-color: var(--sarto); transition: outline-color 100ms linear; }
+.cell.shake{ animation: shake 240ms linear; }
+
+/* ---- 2.5 Filo SVG overlay ---- */
+#filo-svg{
+  position: absolute; inset: 0; z-index: 2;
+  pointer-events: none;
+  width: 100%; height: 100%;
+  overflow: visible;
+}
+#filo-g line, #filo-g polyline{
+  fill: none; stroke: var(--filo); stroke-width: 6;
+  stroke-linecap: round; stroke-linejoin: round;
+  filter: drop-shadow(0 1px 2px var(--shadow-filo));
+  transition: stroke 80ms linear;
+}
+#filo-cap{ fill: var(--filo); transition: fill 80ms linear; }
+#filo-g.c-spezzato line, #filo-g.c-spezzato polyline{ stroke: var(--spezzato); }
+#filo-g.c-spezzato #filo-cap{ fill: var(--spezzato); }
+#filo-g.c-annodato line, #filo-g.c-annodato polyline{ stroke: var(--annodato); }
+#filo-g.c-annodato #filo-cap{ fill: var(--annodato); }
+#filo-g{ transition: none; }
+#filo-g.sfilaccia line, #filo-g.sfilaccia polyline{ stroke-dasharray: 4 8; }
+#filo-g.sfilaccia, #filo-g.affloscia{ opacity: 0; }
+#filo-g.sfilaccia{ transition: opacity 400ms var(--ease-in); }
+#filo-g.affloscia{ transform: translateY(4px); transition: opacity 400ms var(--ease-in), transform 400ms var(--ease-in); }
+#filo-sarto{
+  fill: none; stroke: var(--sarto); stroke-width: 4;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+
+/* ---- Azioni ---- */
+#actions{ margin-top: var(--space-4); }
+.btn{
+  font-weight: 700; font-size: 1rem; line-height: 1.2;
+  padding: 14px 28px; min-height: 48px;
+  border-radius: var(--radius-btn);
+  transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out),
+              border-color var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out);
+}
+.btn-primary{ background: var(--filo); color: var(--bg); }
+@media (hover:hover){ .btn-primary:hover{ background: var(--filo-hover); } }
+.btn-primary:active{ background: var(--filo-hover); transform: scale(.97); }
+.btn-secondary{
+  background: transparent; border: 2px solid var(--spezzato); color: var(--spezzato);
+}
+@media (hover:hover){ .btn-secondary:hover:not(:disabled){ background: var(--spezzato-a12); } }
+.btn-secondary:active:not(:disabled){ background: var(--spezzato-a20); transform: scale(.97); }
+.btn-secondary:disabled{
+  border-color: var(--border); color: var(--text-muted); opacity: .55; cursor: not-allowed;
+}
+.btn-neutro{ background: transparent; border: 2px solid var(--text); color: var(--text); }
+@media (hover:hover){ .btn-neutro:hover{ background: var(--surface-2); } }
+.btn-neutro:active{ background: var(--surface-2); transform: scale(.97); }
+.btn-compact{ padding: 8px 20px; min-height: 44px; } /* target ≥44px (WCAG 2.5.5) */
+.link{
+  color: var(--filo); text-decoration: underline; text-underline-offset: 3px;
+  font-size: 1rem; border-radius: 4px;
+  min-height: 44px; display: inline-flex; align-items: center; /* target ≥44px */
+}
+@media (hover:hover){ .link:hover{ color: var(--filo-hover); } }
+.link:active{ color: var(--filo-hover); text-decoration-thickness: 2px; }
+
+/* ---- 2.6 Modali + toast + banner ---- */
+.overlay{
+  position: fixed; inset: 0; z-index: 50;
+  background: var(--overlay);
+  display: flex; align-items: center; justify-content: center;
+  animation: fade-in var(--dur-2) linear;
+}
+.overlay[hidden]{ display: none; }
+.modal{
+  position: relative; z-index: 51;
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  padding: var(--space-6);
+  max-width: 420px;
+  width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-shadow: var(--shadow-2);
+  animation: modal-in 220ms var(--ease-out);
+}
+.modal-head{
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--space-2); margin-bottom: var(--space-3);
+}
+.modal h2{ font-weight: 700; font-size: 1.375rem; line-height: 1.3; }
+.modal .eyebrow{
+  font-size: .8125rem; font-weight: 500; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--text-muted); line-height: 1.3;
+  padding-top: 12px;
+}
+.modal .close{ flex-shrink: 0; margin: -8px -8px 0 0; }
+.dialog{ max-width: 340px; }
+.dialog-btns{
+  display: flex; gap: var(--space-3); margin-top: var(--space-6);
+  flex-direction: row-reverse; /* [Continua] a destra */
+  justify-content: flex-start;
+}
+#toast{
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  z-index: 60;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  padding: var(--space-3) var(--space-4);
+  font-size: .9375rem; font-weight: 500; line-height: 1.4;
+  box-shadow: var(--shadow-1);
+  max-width: calc(100vw - 48px);
+  animation: toast-in var(--dur-2) var(--ease-out);
+}
+#toast[hidden]{ display: none; }
+#toast .tick{ color: var(--ok); }
+#banner-nuovo-giorno{
+  position: fixed; top: 0; left: 0; right: 0; z-index: 40;
+  min-height: 48px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
+  display: flex; align-items: center; justify-content: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  animation: banner-in 250ms var(--ease-out);
+}
+#banner-nuovo-giorno[hidden]{ display: none; }
+#banner-nuovo-giorno .txt{ font-size: 1rem; font-weight: 500; }
+
+/* ---- Modal risultato ---- */
+#result-stelle{ text-align: center; font-size: 2rem; line-height: 1.2; min-height: 2.4rem; margin-top: var(--space-2); }
+#result-stelle .star{ display: inline-block; animation: star-pop 250ms var(--ease-out) backwards; }
+#result-etichetta{
+  text-align: center; font-weight: 700; font-size: 1.125rem; line-height: 1.3;
+  color: var(--filo); margin-top: var(--space-1);
+}
+#result-dati{
+  text-align: center; font-family: var(--font-num); font-size: .9375rem;
+  color: var(--text); margin-top: var(--space-2);
+}
+#result-sottoriga{ text-align: center; font-size: .9375rem; color: var(--text-muted); margin-top: var(--space-1); }
+#minigrid{
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px;
+  width: 160px; min-width: 140px; margin: var(--space-4) auto 0;
+}
+#minigrid .mcell{
+  aspect-ratio: 1; border-radius: 4px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-num); font-size: .6875rem; color: var(--text-muted);
+  outline: 2px dashed transparent; outline-offset: -2px;
+}
+#minigrid .mcell.mio{ background: var(--filo); color: var(--bg); border-color: var(--filo-scuro); }
+#minigrid .mcell.msarto{ outline-color: var(--sarto); }
+#result-streak{ text-align: center; margin-top: var(--space-4); font-weight: 500; }
+#share-preview{
+  background: var(--surface-2); border-radius: var(--radius-cell);
+  font-family: var(--font-num); font-size: .9375rem; line-height: 1.5;
+  padding: var(--space-3); margin-top: var(--space-4);
+  white-space: pre-wrap; word-break: break-word;
+}
+#share-caption{ font-size: .9375rem; color: var(--text-muted); margin-top: var(--space-2); text-align: center; }
+#result-cta-wrap, #stats-cta-wrap{ text-align: center; margin-top: var(--space-3); }
+.share-fallback{ margin-top: var(--space-3); }
+.share-fallback textarea{
+  width: 100%; background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius-cell);
+  font-family: var(--font-num); font-size: .9375rem; line-height: 1.5;
+  padding: var(--space-3); resize: none;
+}
+.share-fallback .caption{ text-transform: none; letter-spacing: 0; margin-top: var(--space-1); }
+#result-countdown{ text-align: center; margin-top: var(--space-6); color: var(--text); }
+#countdown-time{
+  font-family: var(--font-num); font-weight: 600; font-size: 1.125rem; line-height: 1.2;
+  font-variant-numeric: tabular-nums; display: block;
+}
+#result-statslink{ text-align: center; margin-top: var(--space-3); }
+
+/* ---- Modal statistiche ---- */
+#stats-top{ display: flex; justify-content: space-around; text-align: center; margin: var(--space-4) 0 var(--space-6); gap: var(--space-2); }
+#stats-top .big{ font-family: var(--font-num); font-weight: 700; font-size: 1.75rem; line-height: 1.1; }
+#stats-dist h3{ font-size: .8125rem; font-weight: 500; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); margin-bottom: var(--space-2); }
+.bar-row{ display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+.bar-row .lbl{ width: 56px; font-size: .875rem; color: var(--text-muted); flex-shrink: 0; }
+.bar-track{ flex: 1; height: 12px; border-radius: 6px; background: var(--surface-2); overflow: hidden; }
+.bar-fill{ height: 100%; border-radius: 6px; background: var(--filo); min-width: 0; }
+.bar-row .val{ font-family: var(--font-num); font-size: .875rem; width: 24px; text-align: right; }
+#stats-extra{ margin-top: var(--space-4); font-size: .9375rem; }
+
+/* ---- Onboarding / demo ---- */
+#modal-help .regole{ list-style: none; margin: var(--space-4) 0; }
+#modal-help .regole li{ margin-bottom: var(--space-1); }
+#modal-help .mondo{ color: var(--text-muted); font-size: .9375rem; margin-bottom: var(--space-4); }
+#help-cta-wrap{ text-align: center; }
+#demo{ margin: var(--space-4) auto; text-align: center; }
+#demo .demo-target{ margin-bottom: var(--space-2); }
+#demo .demo-target b{ font-family: var(--font-num); font-size: 1.25rem; letter-spacing: 0; color: var(--text); }
+.demo-wrap{ position: relative; width: 128px; margin: 0 auto; }
+.demo-grid{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.demo-cell{
+  width: 40px; height: 40px; border-radius: 8px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-num); font-weight: 600; font-size: 1rem; color: var(--text);
+  transition: background-color 160ms var(--ease-std), color 160ms var(--ease-std);
+}
+.demo-cell.in-filo{ background: var(--filo); color: var(--bg); border-color: var(--filo-scuro); }
+.demo-svg{ position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.demo-svg polyline, .demo-svg line{ fill: none; stroke: var(--filo); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+.demo-svg circle{ fill: var(--filo); }
+#demo-counter{ font-family: var(--font-num); font-weight: 600; font-size: 1.125rem; margin-top: var(--space-2); }
+#demo-counter.ok{ color: var(--ok); }
+.demo-fade{ opacity: 0; transition: opacity 300ms linear; }
+
+/* ---- 2.7 Animazioni ---- */
+@keyframes shake { 0%,100%{transform:translateX(0)} 12.5%{transform:translateX(-4px)} 37.5%{transform:translateX(4px)} 62.5%{transform:translateX(-4px)} 87.5%{transform:translateX(4px)} }
+@keyframes boardshake { 0%,100%{transform:translateX(0)} 16%{transform:translateX(-3px)} 33%{transform:translateX(3px)} 50%{transform:translateX(-3px)} 66%{transform:translateX(3px)} 83%{transform:translateX(-3px)} }
+@keyframes pulse-ultima { from{ box-shadow: 0 0 0 3px var(--ultima-ring); } to{ box-shadow: 0 0 0 3px var(--ultima-ring-dim); } }
+@keyframes fade-in { from{ opacity: 0; } to{ opacity: 1; } }
+@keyframes modal-in { from{ opacity: 0; transform: scale(.96) translateY(8px); } to{ opacity: 1; transform: none; } }
+@keyframes toast-in { from{ opacity: 0; transform: translateX(-50%) translateY(12px); } to{ opacity: 1; transform: translateX(-50%); } }
+@keyframes banner-in { from{ transform: translateY(-100%); } to{ transform: none; } }
+@keyframes star-pop { 0%{ transform: scale(0); } 80%{ transform: scale(1.2); } 100%{ transform: scale(1); } }
+
+/* ---- 2.8 Media queries ---- */
+@media (max-width: 340px){
+  .cell{ font-size: 1.375rem; }
+  #hud-T{ font-size: 2.5rem; }
+  .dialog-btns{ flex-direction: column; } /* [Continua] sopra */
+}
+@media (max-width: 268px){
+  #board-wrap{ min-width: 268px; }
+}
+@media (max-height: 480px){
+  .modal{
+    max-width: none; width: 100vw; height: 100vh; max-height: none;
+    border-radius: 0; padding: var(--space-4);
+  }
+  .overlay{ align-items: stretch; justify-content: stretch; }
+  .modal-head{
+    position: sticky; top: calc(-1 * var(--space-4)); z-index: 1;
+    background: var(--surface); margin: calc(-1 * var(--space-4)); margin-bottom: 0;
+    padding: var(--space-2) var(--space-4);
+  }
+  #minigrid{ width: 120px; }
+  .demo-cell{ width: 32px; height: 32px; }
+  .demo-wrap{ width: 104px; }
+}
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{ animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+  .overlay, .modal, #toast, #banner-nuovo-giorno{
+    animation-name: fade-in; animation-timing-function: linear;
+    animation-duration: 120ms !important;
+  }
+  .cell.ultima{ animation: none; box-shadow: 0 0 0 3px var(--ultima-ring); }
+  .cell.shake{ animation: none; border-color: var(--spezzato); }
+  #result-stelle .star{ animation: none; }
+  #filo-g.sfilaccia, #filo-g.affloscia{ transition: opacity 120ms linear; transform: none; }
+  .cell, .demo-cell{ transition: none; }
+}
+</style>
+</head>
+<body>
+<!-- ===== LANDING ANIMATA (ingresso) ===== -->
+<style>
+#landing{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:18px;text-align:center;
+  background:radial-gradient(120% 90% at 50% 20%,#1A1030 0%,#11151F 70%);
+  animation:filoLandOut .55s ease 2s forwards;}
+#landing svg{width:min(66vw,300px);height:auto}
+#landing .thread{stroke:#F5B531;stroke-width:6;fill:none;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:560;stroke-dashoffset:560;animation:filoDraw 1.5s cubic-bezier(.6,0,.2,1) .15s forwards;
+  filter:drop-shadow(0 0 7px rgba(245,181,49,.65))}
+#landing .gd{fill:#33405C}
+#landing .dot{fill:#FFD15C;opacity:0;animation:filoDot .01s linear 1.55s forwards}
+#landing .lw{font-family:var(--font-ui,system-ui);font-weight:800;font-size:clamp(42px,15vw,88px);
+  line-height:1;letter-spacing:.28em;padding-left:.28em;color:#F2F5FB;
+  opacity:0;transform:translateY(10px);animation:filoUp .6s ease .85s forwards}
+#landing .lt{font-family:var(--font-ui,system-ui);font-weight:500;font-size:clamp(14px,4.4vw,18px);
+  color:#9FB0CC;max-width:22em;padding:0 24px;opacity:0;animation:filoUp .6s ease 1.2s forwards}
+#landing .lgo{font-family:var(--font-ui,system-ui);font-weight:700;font-size:1.05rem;color:#11151F;
+  border:none;border-radius:999px;padding:14px 34px;margin-top:6px;cursor:pointer;
+  background:linear-gradient(135deg,#FFD15C,#F5B531);box-shadow:0 8px 24px rgba(245,181,49,.35);
+  opacity:0;animation:filoUp .5s ease 1.55s forwards}
+#landing .lhint{font-family:var(--font-ui,system-ui);font-size:.8rem;color:#5b6b82;opacity:0;
+  animation:filoUp .5s ease 1.9s forwards}
+#landing.hide{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .4s ease}
+@keyframes filoDraw{to{stroke-dashoffset:0}}
+@keyframes filoUp{to{opacity:1;transform:none}}
+@keyframes filoDot{to{opacity:1}}
+@keyframes filoLandOut{to{opacity:0;visibility:hidden;pointer-events:none}}
+@media (prefers-reduced-motion:reduce){
+  #landing{animation:filoLandOut .3s ease 1s forwards}
+  #landing .thread{animation:none;stroke-dashoffset:0}
+  #landing .dot,#landing .lw,#landing .lt,#landing .lgo,#landing .lhint{animation:none;opacity:1;transform:none}
+}
+</style>
+<div id="landing" role="dialog" aria-label="Benvenuto in FILO">
+  <svg viewBox="0 0 200 130" aria-hidden="true">
+    <g class="gd">
+      <circle cx="30" cy="25" r="4"/><circle cx="70" cy="25" r="4"/><circle cx="110" cy="25" r="4"/><circle cx="150" cy="25" r="4"/><circle cx="170" cy="25" r="4"/>
+      <circle cx="30" cy="65" r="4"/><circle cx="70" cy="65" r="4"/><circle cx="110" cy="65" r="4"/><circle cx="150" cy="65" r="4"/><circle cx="170" cy="65" r="4"/>
+      <circle cx="30" cy="105" r="4"/><circle cx="70" cy="105" r="4"/><circle cx="110" cy="105" r="4"/><circle cx="150" cy="105" r="4"/><circle cx="170" cy="105" r="4"/>
+    </g>
+    <path class="thread" d="M30 105 L30 65 L70 65 L70 25 L110 25 L110 65 L150 65 L150 105 L170 105 L170 25"/>
+    <circle class="dot" cx="170" cy="25" r="7"/>
+  </svg>
+  <div class="lw">FILO</div>
+  <div class="lt">Un filo. Una somma. Ogni giorno.</div>
+  <button id="landing-go" class="lgo" type="button">Gioca</button>
+  <div class="lhint">tocca per entrare</div>
+</div>
+<script>
+(function(){
+  var l=document.getElementById('landing'); if(!l) return;
+  var done=false;
+  function go(){ if(done) return; done=true; l.classList.add('hide'); setTimeout(function(){ l.style.display='none'; },420); }
+  var b=document.getElementById('landing-go'); if(b) b.addEventListener('click',function(e){ e.stopPropagation(); go(); });
+  l.addEventListener('click',go);
+  setTimeout(function(){ l.style.display='none'; }, 3200); // sicurezza: mai bloccante
+})();
+</script>
+<!-- ===== 3. MARKUP ===== -->
+<div id="banner-nuovo-giorno" role="status" hidden>
+  <span class="txt"><span aria-hidden="true">🧵</span> C'è un nuovo FILO!</span>
+  <button id="banner-gioca" class="btn btn-primary btn-compact">Gioca</button>
+  <button id="banner-chiudi" class="iconbtn" aria-label="Nascondi avviso">×</button>
+</div>
+
+<header>
+  <button id="btn-help" class="iconbtn" aria-label="Come si gioca">?</button>
+  <h1 class="logo">FILO</h1>
+  <button id="btn-stats" class="iconbtn" aria-label="Statistiche"><span aria-hidden="true">📊</span></button>
+</header>
+
+<main>
+  <section id="hud">
+    <div class="caption" id="hud-T-label">Somma del Giorno</div>
+    <div id="hud-T">–</div>
+    <div class="caption" id="hud-sarto">–</div>
+    <div id="hud-row">
+      <div class="caption">Filo <span class="num" id="hud-somma">0</span></div>
+      <div class="caption">Caselle <span class="num" id="hud-caselle">0</span></div>
+      <div id="hud-fili" role="img" aria-label="Fili rimasti: 3 di 3"></div>
+    </div>
+  </section>
+
+  <div id="board-wrap">
+    <div id="board" role="grid" aria-label="Griglia di gioco, 5 righe per 5 colonne"></div>
+    <svg id="filo-svg" aria-hidden="true">
+      <polyline id="filo-sarto" points=""></polyline>
+      <g id="filo-g">
+        <circle id="filo-cap" r="5" cx="-99" cy="-99" opacity="0"></circle>
+        <polyline id="filo-committed" points=""></polyline>
+        <line id="filo-seg" x1="0" y1="0" x2="0" y2="0" opacity="0"></line>
+      </g>
+    </svg>
+  </div>
+
+  <div id="actions">
+    <button id="btn-strappa" class="btn btn-secondary" disabled>Strappa il filo</button>
+  </div>
+</main>
+
+<div id="sr-status" class="sr-only" aria-live="polite"></div>
+<div id="sr-alert" class="sr-only" aria-live="assertive" role="alert"></div>
+
+<!-- Modal COME SI GIOCA -->
+<div class="overlay" id="modal-help" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="help-title" tabindex="-1">
+    <div class="modal-head">
+      <h2 id="help-title">Come si gioca</h2>
+      <button class="iconbtn close" aria-label="Chiudi">×</button>
+    </div>
+    <p>Collega le caselle con un filo continuo (niente diagonali) fino a fare ESATTAMENTE la Somma del Giorno.</p>
+    <div id="demo" aria-hidden="true">
+      <div class="caption demo-target">Somma <b>14</b></div>
+      <div class="demo-wrap">
+        <div class="demo-grid" id="demo-grid"></div>
+        <svg class="demo-svg" viewBox="0 0 128 128">
+          <circle id="demo-cap" r="4" cx="-99" cy="-99" opacity="0"></circle>
+          <polyline id="demo-line" points=""></polyline>
+        </svg>
+      </div>
+      <div id="demo-counter">0</div>
+    </div>
+    <ul class="regole">
+      <li><span aria-hidden="true">🧵</span> Hai 3 fili.</li>
+      <li><span aria-hidden="true">⛔</span> Il filo non si riavvolge: ogni casella è per sempre.</li>
+      <li><span aria-hidden="true">💥</span> Superi la somma? Spezzato.</li>
+      <li><span aria-hidden="true">🪢</span> Resti senza uscite? Nodo.</li>
+      <li><span aria-hidden="true">⭐</span> Più caselle usi, più stelle: batti il Sarto!</li>
+    </ul>
+    <p class="mondo">Un nuovo FILO ogni giorno, uguale per tutto il mondo.</p>
+    <div id="help-cta-wrap">
+      <button id="btn-onboard-play" class="btn btn-primary">Gioca il FILO</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal STATISTICHE -->
+<div class="overlay" id="modal-stats" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="stats-title" tabindex="-1">
+    <div class="modal-head">
+      <h2 id="stats-title">Statistiche</h2>
+      <button class="iconbtn close" aria-label="Chiudi">×</button>
+    </div>
+    <div id="stats-body"></div>
+    <div id="stats-cta-wrap" hidden>
+      <button id="btn-share-stats" class="btn btn-primary">Condividi il risultato <span aria-hidden="true">🧵</span></button>
+      <div class="share-fallback" id="fallback-stats" hidden></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal RISULTATO -->
+<div class="overlay" id="modal-result" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="result-eyebrow" tabindex="-1">
+    <div class="modal-head">
+      <div class="eyebrow" id="result-eyebrow">FILO</div>
+      <button class="iconbtn close" aria-label="Chiudi">×</button>
+    </div>
+    <div id="result-stelle" aria-hidden="true"></div>
+    <div id="result-etichetta"></div>
+    <div id="result-dati"></div>
+    <div id="result-sottoriga"></div>
+    <div id="minigrid" aria-hidden="true"></div>
+    <div id="result-streak" hidden></div>
+    <div id="share-preview" role="group" aria-label="Anteprima del risultato da condividere"></div>
+    <div id="share-caption"></div>
+    <div id="result-cta-wrap">
+      <button id="btn-share" class="btn btn-primary">Condividi il risultato <span aria-hidden="true">🧵</span></button>
+      <div class="share-fallback" id="fallback-result" hidden></div>
+    </div>
+    <p id="result-countdown">Il prossimo FILO si cuce tra
+      <span id="countdown-time" aria-hidden="true">--:--:--</span>
+    </p>
+    <div id="result-statslink">
+      <button id="btn-result-stats" class="link"><span aria-hidden="true">📊</span> Le tue statistiche</button>
+    </div>
+  </div>
+</div>
+
+<!-- Dialog STRAPPO -->
+<div class="overlay" id="modal-strappo" hidden>
+  <div class="modal dialog" role="alertdialog" aria-modal="true" aria-labelledby="strappo-title" aria-describedby="strappo-body" tabindex="-1">
+    <h2 id="strappo-title">Strappare il filo?</h2>
+    <p id="strappo-body" style="margin-top: var(--space-2)"></p>
+    <div class="dialog-btns">
+      <button id="btn-strappo-continua" class="btn btn-neutro">Continua</button>
+      <button id="btn-strappo-conferma" class="btn btn-secondary">Strappa</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" role="status" hidden></div>
+
+<script>
+/* ===== 4. JS ===== */
+'use strict';
+(function(){
+
+/* ---- 4.1 CONFIG ---- */
+var CONFIG = {
+  EPOCH: { y: 2026, m: 8, d: 1 },   // FILO #1 (README §7.1)
+  GRID: 5,
+  CELLS: 25,
+  FILI: 3,
+  /* §9.1: riga URL nel testo condiviso SOLO se non vuota (solo web; su iOS ShareLink la passa a parte) */
+  SHARE_URL: 'https://filo-game-liard.vercel.app'
+};
+var MS_GIORNO = 86400000;
+var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---- 4.2 RNG — mulberry32 + seed dalla data locale (§7.1-7.2, implementazione esatta) ----
+   mulberry32 di Tommy Ettinger, rilasciato nel PUBBLICO DOMINIO (CC0,
+   https://gist.github.com/tommyettinger — nessun vincolo di licenza). */
+function mulberry32(a) {
+  return function() {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    var t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function oggiParts(){
+  var n = new Date();
+  return { y: n.getFullYear(), m: n.getMonth() + 1, d: n.getDate() };
+}
+function dateToStr(y, m, d){
+  return y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+}
+function seedFromDate(y, m, d){ return y * 10000 + m * 100 + d; }
+function puzzleNumber(y, m, d){
+  var epoch = new Date(CONFIG.EPOCH.y, CONFIG.EPOCH.m - 1, CONFIG.EPOCH.d);
+  var giorno = new Date(y, m - 1, d);
+  return Math.round((giorno - epoch) / MS_GIORNO) + 1; // round assorbe la DST (§7.1)
+}
+
+/* ---- 4.3 GENERATOR — percorso Sarto (DFS §7.3) + valori (§7.4) + T (§7.5) ----
+   Ordine chiamate rng NORMATIVO: L_sarto, startIdx, shuffle Fisher-Yates nel DFS,
+   poi 25 valori row-major. Guardia T >= 20 con seed+1. Funzione PURA (nessuno stato). */
+function generate(seedInit){
+  var seed = seedInit;
+  for(;;){
+    var rng = mulberry32(seed);
+    var L = 16 + Math.floor(rng() * 5);        // 16..20
+    var start = Math.floor(rng() * 25);        // 0..24
+    var percorso = [start];
+    var visitate = {}; visitate[start] = true;
+    (function dfs(){
+      if (percorso.length === L) return true;
+      var last = percorso[percorso.length - 1];
+      var r = (last / 5) | 0, c = last % 5;
+      // ordine fisso [su, destra, giù, sinistra], poi filtro visitate (§7.3)
+      var v = [];
+      if (r > 0 && !visitate[last - 5]) v.push(last - 5);
+      if (c < 4 && !visitate[last + 1]) v.push(last + 1);
+      if (r < 4 && !visitate[last + 5]) v.push(last + 5);
+      if (c > 0 && !visitate[last - 1]) v.push(last - 1);
+      // Fisher-Yates con rng
+      for (var i = v.length - 1; i >= 1; i--) {
+        var j = Math.floor(rng() * (i + 1));
+        var tmp = v[i]; v[i] = v[j]; v[j] = tmp;
+      }
+      for (var k = 0; k < v.length; k++) {
+        percorso.push(v[k]); visitate[v[k]] = true;
+        if (dfs()) return true;
+        percorso.pop(); delete visitate[v[k]];
+      }
+      return false;
+    })();
+    var valori = [];
+    for (var idx = 0; idx < 25; idx++) valori.push(1 + Math.floor(rng() * 9));
+    var T = 0;
+    for (var p = 0; p < percorso.length; p++) T += valori[percorso[p]];
+    if (T >= 20) return { valori: valori, T: T, percorsoSarto: percorso, L_sarto: L, seedUsato: seed };
+    seed = seed + 1; // guardia §7.5
+  }
+}
+
+/* ---- 4.4 STORE — wrapper localStorage try/catch + fallback memoria (§11.1) ---- */
+var store = (function(){
+  var mem = {};
+  var ok = false;
+  try { localStorage.setItem('filo.t', '1'); localStorage.removeItem('filo.t'); ok = true; }
+  catch(e) { ok = false; }
+  return {
+    get: function(k, def){
+      try {
+        if (ok) {
+          var v = localStorage.getItem(k);
+          return v === null ? def : JSON.parse(v);
+        }
+      } catch(e) {}
+      return (k in mem) ? mem[k] : def;
+    },
+    set: function(k, v){
+      mem[k] = v;
+      if (ok) { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) {} }
+    }
+  };
+})();
+
+/* ---- 4.5 STATE ---- */
+var puzzle = null;          // { numero, valori, T, percorsoSarto, L_sarto, data }
+var fili = [];              // fili conclusi [{esito, somma, caselle}]
+var filo = [];              // filo corrente (indici)
+var somma = 0;
+var gameOver = false;
+var esitoFinale = null;     // 'vinta' | 'persa'
+var stelleOggi = 0, sartoBattutoOggi = false, percorsoVincente = null;
+var lockInput = false;      // durante le sequenze di esito
+var focusIdx = 0;           // roving tabindex
+var dragging = false;
+var downSuUltima = false;   // pointerdown sull'ultima casella del filo (possibile ripresa drag)
+var estesoDalDown = false;  // almeno una casella aggiunta dall'ultimo pointerdown
+var cellRects = null;
+var bannerDismissedFor = null;
+var stats = null;
+var risultatoMostrato = false;   // il modal risultato è già stato mostrato in sessione
+
+function defaultStats(){
+  return { giocate: 0, vinte: 0, streak: 0, maxStreak: 0,
+           distFili: [0, 0, 0], recordCaselle: 0, sartoBattuto: 0,
+           ultimaVittoria: null };
+}
+function filiRimasti(){ return CONFIG.FILI - fili.length; }
+function salvaOggi(stato){
+  store.set('filo.today', {
+    data: puzzle.data, numero: puzzle.numero, stato: stato,
+    fili: fili, stelle: stelleOggi, sartoBattuto: sartoBattutoOggi,
+    percorsoVincente: percorsoVincente
+  });
+}
+/* Streak effettiva ai fini di visualizzazione/condivisione (§8.2) */
+function streakEffettiva(){
+  if (!stats.ultimaVittoria) return 0;
+  var o = oggiParts();
+  var ieri = new Date(o.y, o.m - 1, o.d - 1);
+  var ieriStr = dateToStr(ieri.getFullYear(), ieri.getMonth() + 1, ieri.getDate());
+  var oggiStr = dateToStr(o.y, o.m, o.d);
+  if (stats.ultimaVittoria === oggiStr || stats.ultimaVittoria === ieriStr) return stats.streak;
+  return 0;
+}
+
+/* ---- 4.6 RENDER — griglia, HUD, filo SVG, reveal Sarto ---- */
+var $ = function(s){ return document.querySelector(s); };
+var board = $('#board');
+var boardWrap = $('#board-wrap');
+var svgEl = $('#filo-svg');
+var filoG = $('#filo-g');
+var elCommitted = $('#filo-committed');
+var elSeg = $('#filo-seg');
+var elCap = $('#filo-cap');
+var elSarto = $('#filo-sarto');
+var cells = [];
+
+function buildBoard(){
+  board.innerHTML = '';
+  cells = [];
+  for (var r = 0; r < 5; r++) {
+    var row = document.createElement('div');
+    row.className = 'row';
+    row.setAttribute('role', 'row');
+    for (var c = 0; c < 5; c++) {
+      var idx = r * 5 + c;
+      var b = document.createElement('button');
+      b.className = 'cell';
+      b.type = 'button';
+      b.setAttribute('role', 'gridcell');
+      b.dataset.idx = idx;
+      b.tabIndex = idx === 0 ? 0 : -1;
+      var ord = document.createElement('span');
+      ord.className = 'ord';
+      ord.setAttribute('aria-hidden', 'true');
+      b.appendChild(document.createTextNode(''));
+      b.appendChild(ord);
+      row.appendChild(b);
+      cells.push(b);
+    }
+    board.appendChild(row);
+  }
+}
+function cellLabel(idx){
+  var r = ((idx / 5) | 0) + 1, c = (idx % 5) + 1;
+  var v = puzzle.valori[idx];
+  var lbl = 'Riga ' + r + ' colonna ' + c + ', valore ' + v;
+  var pos = filo.indexOf(idx);
+  if (pos === filo.length - 1 && pos >= 0) lbl += ', ultima del filo';
+  else if (pos >= 0) lbl += ', nel filo, posizione ' + (pos + 1);
+  if (gameOver && puzzle.percorsoSarto.indexOf(idx) >= 0) lbl += ', percorso del Sarto';
+  return lbl;
+}
+function updateCells(){
+  for (var i = 0; i < 25; i++) {
+    var b = cells[i];
+    b.firstChild.nodeValue = puzzle.valori[i];
+    var pos = filo.indexOf(i);
+    b.classList.toggle('in-filo', pos >= 0);
+    b.classList.toggle('ultima', pos >= 0 && pos === filo.length - 1 && !gameOver);
+    b.querySelector('.ord').textContent = pos >= 0 ? (pos + 1) : '';
+    b.setAttribute('aria-label', cellLabel(i));
+    b.disabled = gameOver;
+    b.tabIndex = (i === focusIdx && !gameOver) ? 0 : -1;
+  }
+  board.classList.toggle('finita', gameOver);
+}
+function centro(idx){
+  // Coordinate del centro cella relative a #board-wrap (il contenitore
+  // dell'overlay SVG): rect-based, robusto rispetto a offsetParent.
+  var r = cells[idx].getBoundingClientRect();
+  var w = boardWrap.getBoundingClientRect();
+  return { x: r.left - w.left + r.width / 2,
+           y: r.top - w.top + r.height / 2 };
+}
+function syncSvgSize(){
+  var w = boardWrap.offsetWidth, h = boardWrap.offsetHeight;
+  svgEl.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+}
+function puntiFilo(arr){
+  var pts = [];
+  for (var i = 0; i < arr.length; i++) {
+    var c = centro(arr[i]);
+    pts.push(c.x + ',' + c.y);
+  }
+  return pts.join(' ');
+}
+function drawCommitted(){
+  syncSvgSize();
+  if (filo.length === 0) {
+    elCommitted.setAttribute('points', '');
+    elCap.setAttribute('opacity', '0');
+    elSeg.setAttribute('opacity', '0');
+    return;
+  }
+  var c0 = centro(filo[0]);
+  elCap.setAttribute('cx', c0.x); elCap.setAttribute('cy', c0.y);
+  elCap.setAttribute('opacity', '1');
+  elCommitted.setAttribute('points', puntiFilo(filo));
+  elSeg.setAttribute('opacity', '0');
+}
+var segTimer = null;
+function animateSeg(fromIdx, toIdx){
+  // Il filo "viene cucito": ultimo segmento con dashoffset L→0 in 120ms (UX §7.2)
+  if (segTimer) { clearTimeout(segTimer); segTimer = null; }
+  var a = centro(fromIdx), b = centro(toIdx);
+  if (reducedMotion) { drawCommitted(); return; }
+  elCommitted.setAttribute('points', puntiFilo(filo.slice(0, -1)));
+  var L = Math.hypot(b.x - a.x, b.y - a.y);
+  elSeg.setAttribute('x1', a.x); elSeg.setAttribute('y1', a.y);
+  elSeg.setAttribute('x2', b.x); elSeg.setAttribute('y2', b.y);
+  elSeg.style.transition = 'none';
+  elSeg.style.strokeDasharray = L + ' ' + L;
+  elSeg.style.strokeDashoffset = L;
+  elSeg.setAttribute('opacity', '1');
+  void elSeg.getBoundingClientRect(); // reflow
+  elSeg.style.transition = 'stroke-dashoffset 120ms var(--ease-out)';
+  elSeg.style.strokeDashoffset = '0';
+  segTimer = setTimeout(function(){ drawCommitted(); }, 140); // fallback consolidamento
+}
+function resetSvgClassi(){
+  filoG.classList.remove('c-spezzato', 'c-annodato', 'sfilaccia', 'affloscia');
+  elCommitted.style.strokeDasharray = '';
+}
+function drawSarto(animate){
+  syncSvgSize();
+  var pts = puntiFilo(puzzle.percorsoSarto);
+  elSarto.setAttribute('points', pts);
+  var Lsegs = puzzle.percorsoSarto.length - 1;
+  var durata = Math.min(1800, 90 * Lsegs);
+  // outline dashed sulle caselle, delay progressivo (UX §7.5)
+  for (var k = 0; k < puzzle.percorsoSarto.length; k++) {
+    var cell = cells[puzzle.percorsoSarto[k]];
+    if (animate && !reducedMotion) {
+      cell.style.transitionDelay = Math.round((k / Math.max(1, Lsegs)) * durata) + 'ms';
+    } else {
+      cell.style.transitionDelay = '0ms';
+    }
+    cell.classList.add('sarto');
+    cell.setAttribute('aria-label', cellLabel(puzzle.percorsoSarto[k]));
+  }
+  if (!animate || reducedMotion) {
+    elSarto.style.strokeDasharray = '';
+    elSarto.style.strokeDashoffset = '';
+    return 0;
+  }
+  var totLen = 0;
+  for (var i = 1; i < puzzle.percorsoSarto.length; i++) {
+    var a = centro(puzzle.percorsoSarto[i - 1]), b = centro(puzzle.percorsoSarto[i]);
+    totLen += Math.hypot(b.x - a.x, b.y - a.y);
+  }
+  elSarto.style.transition = 'none';
+  elSarto.style.strokeDasharray = totLen + ' ' + totLen;
+  elSarto.style.strokeDashoffset = totLen;
+  void elSarto.getBoundingClientRect();
+  elSarto.style.transition = 'stroke-dashoffset ' + durata + 'ms var(--ease-std)';
+  elSarto.style.strokeDashoffset = '0';
+  return durata;
+}
+function updateHUD(){
+  /* niente aria-label su div generici (ARIA: prohibited su role generic, WCAG 4.1.2):
+     il testo visibile + la caption "Somma del Giorno" bastano allo screen reader */
+  $('#hud-T').textContent = puzzle.T;
+  var minC = Math.ceil(puzzle.T / 9);
+  var sr = $('#hud-sarto');
+  sr.textContent = 'Il Sarto: ' + puzzle.L_sarto + ' caselle · minimo ' + minC;
+  $('#hud-somma').textContent = somma;
+  $('#hud-caselle').textContent = filo.length;
+  var hf = $('#hud-fili');
+  hf.innerHTML = '';
+  hf.setAttribute('aria-label', 'Fili rimasti: ' + filiRimasti() + ' di 3');
+  var esitiEmoji = { spezzato: '💥', annodato: '🪢', strappato: '✂️', vinto: '' };
+  for (var i = 0; i < CONFIG.FILI; i++) {
+    var slot = document.createElement('span');
+    slot.className = 'filo-slot';
+    slot.setAttribute('aria-hidden', 'true');
+    var f = fili[i];
+    if (f && f.esito !== 'vinto') {
+      slot.classList.add('perso');
+      slot.innerHTML = '<span class="thread">🧵</span>' + esitiEmoji[f.esito];
+    } else {
+      slot.innerHTML = '<span class="thread">🧵</span>';
+    }
+    hf.appendChild(slot);
+  }
+  $('#btn-strappa').disabled = (filo.length === 0 || gameOver || lockInput);
+}
+function renderAll(){
+  updateCells();
+  updateHUD();
+  drawCommitted();
+}
+
+/* ---- Annunci screen reader (UX §9.5, testi esatti) ---- */
+function annuncia(polite, txt){
+  $(polite ? '#sr-status' : '#sr-alert').textContent = txt;
+}
+
+/* ---- 4.7 INPUT — pointer events (tap + drag) + tastiera (roving tabindex) ---- */
+function adiacenti(a, b){
+  var ra = (a / 5) | 0, ca = a % 5, rb = (b / 5) | 0, cb = b % 5;
+  return Math.abs(ra - rb) + Math.abs(ca - cb) === 1;
+}
+function vicinoLibero(idx){
+  var r = (idx / 5) | 0, c = idx % 5;
+  var n = [];
+  if (r > 0) n.push(idx - 5);
+  if (c < 4) n.push(idx + 1);
+  if (r < 4) n.push(idx + 5);
+  if (c > 0) n.push(idx - 1);
+  for (var i = 0; i < n.length; i++) if (filo.indexOf(n[i]) < 0) return true;
+  return false;
+}
+function shakeCell(idx){
+  var b = cells[idx];
+  b.classList.remove('shake');
+  void b.offsetWidth;
+  b.classList.add('shake');
+  setTimeout(function(){ b.classList.remove('shake'); }, 300);
+}
+function setFocusIdx(idx, doFocus){
+  cells[focusIdx].tabIndex = -1;
+  focusIdx = idx;
+  cells[focusIdx].tabIndex = 0;
+  if (doFocus) cells[focusIdx].focus();
+}
+/* viaTap = tap/tastiera (feedback shake su mossa non valida); drag = silenzioso */
+function giocaCasella(idx, viaTap){
+  if (gameOver || lockInput) return;
+  var v = puzzle.valori[idx];
+  if (filo.length === 0) {
+    filo.push(idx);
+    somma = v;
+    estesoDalDown = true;
+    renderAll();
+    annuncia(true, 'Filo iniziato. Somma ' + somma + ' su ' + puzzle.T + '.');
+    if (document.activeElement && board.contains(document.activeElement)) setFocusIdx(idx, true);
+    else setFocusIdx(idx, false);
+    valutaEsiti();
+    return;
+  }
+  var last = filo[filo.length - 1];
+  /* niente caso speciale per idx === last: casella già visitata → shake (§6.6);
+     la ripresa del drag dall'ultima casella è gestita nel pointerdown/pointerup */
+  if (filo.indexOf(idx) >= 0) {
+    if (viaTap) { shakeCell(idx); annuncia(false, 'Mossa non valida: casella già usata in questo filo.'); }
+    return;
+  }
+  if (!adiacenti(last, idx)) {
+    if (viaTap) { shakeCell(idx); annuncia(false, "Mossa non valida: la casella non è adiacente all'ultima."); }
+    return;
+  }
+  filo.push(idx);
+  somma += v;
+  estesoDalDown = true;
+  updateCells();
+  updateHUD();
+  animateSeg(last, idx);
+  annuncia(true, 'Più ' + v + '. Somma ' + somma + ' su ' + puzzle.T + ', ' + filo.length + ' caselle.');
+  if (document.activeElement && board.contains(document.activeElement)) setFocusIdx(idx, true);
+  else setFocusIdx(idx, false);
+  valutaEsiti();
+}
+function cellFromPoint(x, y){
+  if (!cellRects) return null;
+  for (var i = 0; i < 25; i++) {
+    var r = cellRects[i];
+    // area utile ridotta del 12%: meno falsi positivi negli angoli durante il drag
+    var mx = r.width * .12, my = r.height * .12;
+    if (x >= r.left + mx && x <= r.right - mx && y >= r.top + my && y <= r.bottom - my) return i;
+  }
+  return null;
+}
+function cacheRects(){
+  cellRects = [];
+  for (var i = 0; i < 25; i++) cellRects.push(cells[i].getBoundingClientRect());
+}
+board.addEventListener('pointerdown', function(e){
+  if (gameOver || lockInput) return;
+  var t = e.target.closest('.cell');
+  if (!t) return;
+  e.preventDefault();
+  dragging = true;
+  cacheRects();
+  try { board.setPointerCapture(e.pointerId); } catch(err) {}
+  var idx = +t.dataset.idx;
+  /* pointerdown sull'ultima casella = possibile ripresa del drag: il feedback
+     "casella già usata" (§6.6) viene dato al pointerup solo se non c'è stata estensione */
+  downSuUltima = (filo.length > 0 && idx === filo[filo.length - 1]);
+  estesoDalDown = false;
+  if (!downSuUltima) giocaCasella(idx, true);
+});
+board.addEventListener('pointermove', function(e){
+  if (!dragging || gameOver || lockInput) return;
+  var idx = cellFromPoint(e.clientX, e.clientY);
+  if (idx === null) return; // fuori griglia: il filo resta all'ultima casella valida (§6.6)
+  giocaCasella(idx, false);  // silenzioso: visitate/non adiacenti ignorate (§6.6)
+});
+function endDrag(e){
+  /* tap (senza estensione) sull'ultima casella del filo: già visitata → shake, nessun effetto (§6.6) */
+  if (dragging && downSuUltima && !estesoDalDown && !gameOver && !lockInput && filo.length > 0) {
+    var last = filo[filo.length - 1];
+    var idx = cellFromPoint(e.clientX, e.clientY);
+    if (idx === last) {
+      shakeCell(last);
+      annuncia(false, 'Mossa non valida: casella già usata in questo filo.');
+    }
+  }
+  dragging = false; downSuUltima = false;
+}
+board.addEventListener('pointerup', endDrag);
+board.addEventListener('pointercancel', endDrag);
+/* Tastiera: frecce muovono il focus (nessun wrap), Invio/Spazio gioca (UX §9.1) */
+board.addEventListener('keydown', function(e){
+  if (gameOver) return;
+  var r = (focusIdx / 5) | 0, c = focusIdx % 5;
+  var next = null;
+  if (e.key === 'ArrowUp' && r > 0) next = focusIdx - 5;
+  else if (e.key === 'ArrowDown' && r < 4) next = focusIdx + 5;
+  else if (e.key === 'ArrowLeft' && c > 0) next = focusIdx - 1;
+  else if (e.key === 'ArrowRight' && c < 4) next = focusIdx + 1;
+  else if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    giocaCasella(focusIdx, true);
+    return;
+  } else return;
+  e.preventDefault();
+  if (next !== null) setFocusIdx(next, true);
+});
+window.addEventListener('resize', function(){
+  drawCommitted();
+  if (gameOver) drawSarto(false);
+});
+
+/* ---- 4.8 RULES — esiti automatici §6.3 (ordine: vittoria, spezzato, annodato) ---- */
+function valutaEsiti(){
+  if (somma === puzzle.T) { vittoria(); return; }
+  if (somma > puzzle.T) { filoConcluso('spezzato'); return; }
+  var last = filo[filo.length - 1];
+  if (!vicinoLibero(last)) { filoConcluso('annodato'); return; }
+}
+function vibra(pattern){
+  try { if (navigator.vibrate) navigator.vibrate(pattern); } catch(e) {}
+}
+function testoToastEsito(esito, s, n){
+  var resto = (n === 1) ? 'Te ne resta 1.' : 'Te ne restano ' + n + '.';
+  if (esito === 'spezzato') return '💥 Crack! ' + s + ' su ' + puzzle.T + ': il filo non ha retto. ' + resto;
+  if (esito === 'annodato') return '🪢 Vicolo cieco a ' + s + ' su ' + puzzle.T + '. ' + resto;
+  return '✂️ Strappo netto. ' + resto;
+}
+/* Sequenze animate esito (UX §7.3, §7.4) poi conclusione del filo */
+function filoConcluso(esito){
+  lockInput = true;
+  updateHUD();
+  var sommaFilo = somma, caselleFilo = filo.length;
+  var fine = function(){
+    fili.push({ esito: esito, somma: sommaFilo, caselle: caselleFilo });
+    filo = [];
+    somma = 0;
+    resetSvgClassi();
+    var n = filiRimasti();
+    if (esito === 'spezzato') annuncia(false, 'Filo spezzato: somma ' + sommaFilo + ', superiore a ' + puzzle.T + '. Fili rimasti: ' + n + '.');
+    else if (esito === 'annodato') annuncia(false, 'Filo annodato: nessuna casella libera adiacente. Fili rimasti: ' + n + '.');
+    else annuncia(true, 'Filo strappato. Fili rimasti: ' + n + '.');
+    if (n === 0) {
+      salvaOggi('in-corso'); // i fili conclusi prima della valutazione finale
+      sconfitta();
+      return;
+    }
+    salvaOggi('in-corso');
+    lockInput = false;
+    renderAll();
+    showToast(testoToastEsito(esito, sommaFilo, n));
+  };
+  if (reducedMotion) {
+    // cambio colore + dissolvenza, senza scuotimenti (UX §6)
+    if (esito === 'spezzato') { filoG.classList.add('c-spezzato'); vibra(60); }
+    else if (esito === 'annodato') { filoG.classList.add('c-annodato'); vibra(60); }
+    else vibra(35);
+    filoG.classList.add('affloscia');
+    setTimeout(fine, 240);
+    return;
+  }
+  if (esito === 'spezzato') {
+    filoG.classList.add('c-spezzato');
+    vibra(60);
+    setTimeout(function(){
+      boardWrap.classList.add('board-shake');
+      setTimeout(function(){ boardWrap.classList.remove('board-shake'); }, 220);
+    }, 80);
+    setTimeout(function(){ filoG.classList.add('sfilaccia'); }, 280);
+    setTimeout(function(){
+      for (var i = 0; i < filo.length; i++) cells[filo[i]].classList.remove('in-filo', 'ultima');
+    }, 380);
+    setTimeout(fine, 700);
+  } else if (esito === 'annodato') {
+    filoG.classList.add('c-annodato');
+    vibra(60);
+    setTimeout(function(){ filoG.classList.add('affloscia'); }, 80);
+    setTimeout(function(){
+      for (var i = 0; i < filo.length; i++) cells[filo[i]].classList.remove('in-filo', 'ultima');
+    }, 480);
+    setTimeout(fine, 600);
+  } else { // strappato: dissolvenza 300ms senza cambio colore (UX §10)
+    vibra(35);
+    filoG.classList.add('affloscia');
+    setTimeout(function(){
+      for (var i = 0; i < filo.length; i++) cells[filo[i]].classList.remove('in-filo', 'ultima');
+    }, 200);
+    setTimeout(fine, 350);
+  }
+}
+
+/* Strappo volontario (§6.4) */
+$('#btn-strappa').addEventListener('click', function(){
+  if (filo.length === 0 || gameOver || lockInput) return;
+  var n = filiRimasti() - 1; // fili DOPO lo strappo
+  var body;
+  if (n === 0) body = "È l'ultimo filo: strapparlo chiude la partita di oggi.";
+  else if (n === 1) body = 'Un filo strappato non si ricuce: te ne resterà 1.';
+  else body = 'Un filo strappato non si ricuce: te ne resteranno ' + n + '.';
+  $('#strappo-body').textContent = body;
+  openModal('modal-strappo', $('#btn-strappa'));
+});
+$('#btn-strappo-conferma').addEventListener('click', function(){
+  closeModal('modal-strappo');
+  filoConcluso('strappato');
+});
+$('#btn-strappo-continua').addEventListener('click', function(){
+  closeModal('modal-strappo');
+});
+
+/* ---- 4.9 ENDGAME — vittoria/sconfitta, stelle, streak, stats (§8) ---- */
+function calcolaStelle(C, L){
+  if (C > L) return { stelle: 3, gold: true, label: 'Hai battuto il Sarto!' };
+  if (C === L) return { stelle: 3, gold: false, label: 'Filo perfetto' };
+  if (C >= L - 3) return { stelle: 2, gold: false, label: 'Filo elegante' };
+  return { stelle: 1, gold: false, label: 'Filo riuscito' };
+}
+function aggiornaStats(vinta, filiUsati, caselle, gold){
+  stats.giocate += 1;
+  var o = oggiParts();
+  var oggiStr = dateToStr(o.y, o.m, o.d);
+  if (vinta) {
+    stats.vinte += 1;
+    var ieri = new Date(o.y, o.m - 1, o.d - 1);
+    var ieriStr = dateToStr(ieri.getFullYear(), ieri.getMonth() + 1, ieri.getDate());
+    stats.streak = (stats.ultimaVittoria === ieriStr) ? stats.streak + 1 : 1;
+    stats.maxStreak = Math.max(stats.maxStreak, stats.streak);
+    stats.ultimaVittoria = oggiStr;
+    stats.distFili[filiUsati - 1] += 1;
+    stats.recordCaselle = Math.max(stats.recordCaselle, caselle);
+    if (gold) stats.sartoBattuto += 1;
+  } else {
+    stats.streak = 0;
+  }
+  store.set('filo.stats', stats);
+}
+function vittoria(){
+  lockInput = true;
+  var C = filo.length;
+  var res = calcolaStelle(C, puzzle.L_sarto);
+  stelleOggi = res.stelle;
+  sartoBattutoOggi = res.gold;
+  percorsoVincente = filo.slice();
+  fili.push({ esito: 'vinto', somma: somma, caselle: C });
+  esitoFinale = 'vinta';
+  gameOver = true;
+  aggiornaStats(true, fili.length, C, res.gold);
+  salvaOggi('vinta');
+  vibra([40, 60, 120]);
+  var parole = res.gold ? 'Tre stelle, hai battuto il Sarto!' :
+    (res.stelle === 3 ? 'Tre stelle' : res.stelle === 2 ? 'Due stelle' : 'Una stella');
+  annuncia(false, 'Vittoria! Somma esatta ' + puzzle.T + ' con ' + C + ' caselle. ' + parole + '.');
+  renderAll();
+  revealPoiRisultato();
+}
+function sconfitta(){
+  esitoFinale = 'persa';
+  gameOver = true;
+  filo = [];
+  somma = 0;
+  aggiornaStats(false, 3, 0, false);
+  salvaOggi('persa');
+  annuncia(false, 'Fili finiti. Il percorso del Sarto viene rivelato.');
+  lockInput = false;
+  renderAll();
+  revealPoiRisultato();
+}
+/* Reveal del Sarto poi modal risultato (UX §7.5: delay 350ms, poi +400ms) */
+function revealPoiRisultato(){
+  setTimeout(function(){
+    var durata = drawSarto(true);
+    setTimeout(function(){ apriRisultato(); }, durata + 400);
+  }, reducedMotion ? 350 : 350);
+}
+
+/* ---- 4.10 SHARE — buildShareText (§9.1, unica fonte) + catena fallback (§9.3) ---- */
+function buildShareText(){
+  var righe = [];
+  righe.push('FILO #' + puzzle.numero + ' 🧵' + (esitoFinale === 'persa' ? ' ❌' : ''));
+  for (var i = 0; i < fili.length; i++) {
+    var f = fili[i];
+    if (f.esito === 'vinto') {
+      var stelleStr = '⭐'.repeat(stelleOggi) + (sartoBattutoOggi ? '🥇' : '');
+      righe.push('🟩🟩🟩🟩🟩 ' + f.caselle + '/25 ' + stelleStr);
+    } else {
+      var p = Math.min(f.somma, puzzle.T) / puzzle.T;
+      var n = Math.min(5, Math.floor(p * 5));
+      righe.push('🟦'.repeat(n) + '⬜'.repeat(5 - n) + ' ' + (f.esito === 'spezzato' ? '💥' : '🪢'));
+    }
+  }
+  var sk = streakEffettiva();
+  if (esitoFinale === 'vinta' && sk >= 2) righe.push('🔥 ' + sk + ' di fila');
+  // §9.1: la riga URL esiste SOLO se SHARE_URL è definita e non vuota
+  if (CONFIG.SHARE_URL) righe.push(CONFIG.SHARE_URL);
+  return righe.join('\n');
+}
+function condividi(fallbackContainerId){
+  var text = buildShareText();
+  try {
+    if (navigator.share) {
+      navigator.share({ text: text }).catch(function(){ /* annullato dall'utente: ok */ });
+      return;
+    }
+  } catch(e) {}
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function(){
+        showToast('<span class="tick" aria-hidden="true">✓</span> Copiato! Incollalo in chat 🧵', true);
+      }, function(){ mostraFallbackTextarea(fallbackContainerId, text); });
+      return;
+    }
+  } catch(e) {}
+  mostraFallbackTextarea(fallbackContainerId, text);
+}
+function mostraFallbackTextarea(containerId, text){
+  try {
+    var box = document.getElementById(containerId);
+    if (!box) return;
+    box.hidden = false;
+    box.innerHTML = '';
+    var ta = document.createElement('textarea');
+    ta.readOnly = true;
+    ta.rows = Math.min(7, text.split('\n').length + 1);
+    ta.value = text;
+    var cap = document.createElement('div');
+    cap.className = 'caption';
+    cap.textContent = 'Tieni premuto e copia';
+    box.appendChild(ta);
+    box.appendChild(cap);
+    try { ta.focus(); ta.select(); } catch(e) {}
+  } catch(e) {}
+}
+$('#btn-share').addEventListener('click', function(){ condividi('fallback-result'); });
+$('#btn-share-stats').addEventListener('click', function(){ condividi('fallback-stats'); });
+
+/* ---- 4.11 UI — modali, onboarding, toast, countdown, risultato, statistiche ---- */
+var modalOpener = {};
+var activeModal = null;
+function focusables(modal){
+  var list = modal.querySelectorAll('button:not([disabled]), [href], input, textarea, select, [tabindex]:not([tabindex="-1"])');
+  return Array.prototype.filter.call(list, function(el){ return el.offsetParent !== null; });
+}
+function setBackgroundInert(on){
+  ['header', 'main', '#banner-nuovo-giorno'].forEach(function(sel){
+    var el = document.querySelector(sel);
+    if (!el) return;
+    try { if (on) el.setAttribute('inert', ''); else el.removeAttribute('inert'); } catch(e) {}
+    if (on) el.setAttribute('aria-hidden', 'true'); else el.removeAttribute('aria-hidden');
+  });
+}
+function openModal(id, opener){
+  var ov = document.getElementById(id);
+  if (activeModal && activeModal !== id) {
+    document.getElementById(activeModal).hidden = true;
+  }
+  modalOpener[id] = opener || null;
+  ov.hidden = false;
+  activeModal = id;
+  setBackgroundInert(true);
+  var modal = ov.querySelector('.modal');
+  if (id === 'modal-strappo') $('#btn-strappo-continua').focus();
+  else modal.focus();
+  if (id === 'modal-result') startCountdown();
+  if (id === 'modal-help') startDemo();
+}
+function closeModal(id){
+  var ov = document.getElementById(id);
+  ov.hidden = true;
+  if (activeModal === id) activeModal = null;
+  setBackgroundInert(false);
+  if (id === 'modal-result') stopCountdown();
+  if (id === 'modal-help') {
+    stopDemo();
+    // il tutorial vale come visto anche se chiuso con [X]/overlay/Esc (RF7)
+    store.set('filo.onboarded', true);
+    // primo accesso su un giorno già concluso: dopo il tutorial, il risultato (RF9)
+    if (gameOver && !risultatoMostrato) {
+      drawSarto(false);
+      updateCells();
+      apriRisultato();
+    }
+  }
+  var op = modalOpener[id];
+  try { if (op) op.focus(); } catch(e) {}
+}
+document.addEventListener('keydown', function(e){
+  if (!activeModal) return;
+  var ov = document.getElementById(activeModal);
+  var modal = ov.querySelector('.modal');
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    closeModal(activeModal); // dialog strappo: Esc = [Continua] (nessuna azione)
+    return;
+  }
+  if (e.key === 'Tab') {
+    var f = focusables(modal);
+    if (f.length === 0) { e.preventDefault(); return; }
+    var first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && (document.activeElement === first || document.activeElement === modal)) {
+      e.preventDefault(); last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault(); first.focus();
+    }
+  }
+});
+/* chiusura: [X] e tap sull'overlay (mai per il dialog strappo) */
+Array.prototype.forEach.call(document.querySelectorAll('.overlay'), function(ov){
+  ov.addEventListener('pointerdown', function(e){
+    if (e.target === ov && ov.id !== 'modal-strappo') closeModal(ov.id);
+  });
+  var x = ov.querySelector('.close');
+  if (x) x.addEventListener('click', function(){ closeModal(ov.id); });
+});
+$('#btn-help').addEventListener('click', function(){ openModal('modal-help', $('#btn-help')); });
+$('#btn-stats').addEventListener('click', function(){ renderStats(); openModal('modal-stats', $('#btn-stats')); });
+$('#btn-result-stats').addEventListener('click', function(){
+  closeModal('modal-result');
+  renderStats();
+  openModal('modal-stats', $('#btn-stats'));
+});
+$('#btn-onboard-play').addEventListener('click', function(){
+  store.set('filo.onboarded', true);
+  closeModal('modal-help');
+});
+
+/* Toast (unico elemento riusato) */
+var toastTimer = null;
+function showToast(html, isHtml){
+  var t = $('#toast');
+  if (toastTimer) clearTimeout(toastTimer);
+  if (isHtml) t.innerHTML = html; else t.textContent = html;
+  t.hidden = false;
+  toastTimer = setTimeout(function(){ t.hidden = true; }, 2500);
+}
+
+/* Countdown a mezzanotte locale (attivo solo a modal risultato aperto) */
+var countdownTimer = null;
+function countdownText(){
+  var now = new Date();
+  var mid = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+  var diff = Math.max(0, mid - now);
+  var s = Math.floor(diff / 1000);
+  var hh = String(Math.floor(s / 3600)).padStart(2, '0');
+  var mm = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+  var ss = String(s % 60).padStart(2, '0');
+  return hh + ':' + mm + ':' + ss;
+}
+function startCountdown(){
+  stopCountdown();
+  $('#countdown-time').textContent = countdownText(); // parte al secondo esatto
+  countdownTimer = setInterval(function(){
+    $('#countdown-time').textContent = countdownText();
+  }, 1000);
+}
+function stopCountdown(){
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+}
+
+/* Modal RISULTATO (ordine visivo NEURO_SPEC §5, testi §2) */
+function apriRisultato(){
+  var vinta = esitoFinale === 'vinta';
+  var L = puzzle.L_sarto;
+  $('#result-eyebrow').textContent = 'FILO #' + puzzle.numero + (vinta ? ' · Vittoria' : '');
+  var stelleEl = $('#result-stelle');
+  stelleEl.innerHTML = '';
+  if (vinta) {
+    for (var i = 0; i < stelleOggi; i++) {
+      var sp = document.createElement('span');
+      sp.className = 'star';
+      sp.textContent = '⭐';
+      sp.style.animationDelay = (i * 150) + 'ms';
+      stelleEl.appendChild(sp);
+    }
+    if (sartoBattutoOggi) {
+      var g = document.createElement('span');
+      g.className = 'star';
+      g.textContent = '🥇';
+      g.style.animationDelay = (stelleOggi * 150) + 'ms';
+      stelleEl.appendChild(g);
+    }
+    stelleEl.hidden = false;
+  } else {
+    stelleEl.hidden = true;
+  }
+  var filoVincente = null, fWin = 0;
+  for (var k = 0; k < fili.length; k++) if (fili[k].esito === 'vinto') { filoVincente = fili[k]; fWin = k + 1; }
+  var C = filoVincente ? filoVincente.caselle : 0;
+  var d = L - C;
+  if (vinta) {
+    var res = calcolaStelle(C, L);
+    $('#result-etichetta').textContent = res.label;
+    $('#result-dati').textContent = C + ' caselle · ' + fWin + '° filo · Sarto: ' + L;
+    var sotto;
+    if (res.gold) sotto = C + ' caselle contro le sue ' + L + '. Oggi il maestro sei tu.';
+    else if (res.stelle === 3) sotto = "Stessa misura del Sarto: " + C + " caselle. Cucito a regola d'arte.";
+    else if (res.stelle === 2) sotto = 'A un soffio dal Sarto: ' + d + ' caselle di differenza. Ci sei quasi.';
+    else sotto = "Somma esatta! Il Sarto però l'ha cucita in " + L + " caselle. Domani allunghi il filo?";
+    $('#result-sottoriga').textContent = sotto;
+  } else {
+    $('#result-etichetta').textContent = 'Oggi il Sarto la spunta';
+    $('#result-dati').textContent = '3 fili usati · Sarto: ' + L + ' caselle';
+    $('#result-sottoriga').textContent = "Il suo percorso è qui sotto: studialo. Domani c'è un filo nuovo.";
+  }
+  // mini-griglia: mio filo dorato + Sarto tratteggiato
+  var mg = $('#minigrid');
+  mg.innerHTML = '';
+  for (var m = 0; m < 25; m++) {
+    var mc = document.createElement('div');
+    mc.className = 'mcell';
+    mc.textContent = puzzle.valori[m];
+    if (percorsoVincente && percorsoVincente.indexOf(m) >= 0) mc.classList.add('mio');
+    if (puzzle.percorsoSarto.indexOf(m) >= 0) mc.classList.add('msarto');
+    mg.appendChild(mc);
+  }
+  // streak / milestone (NEURO_SPEC §2.4) — mai menzionare la streak azzerata
+  var sk = streakEffettiva();
+  var rs = $('#result-streak');
+  if (vinta && sk >= 2) {
+    var milestone = {
+      2: '🔥 2 di fila — il filo comincia a tenere.',
+      3: '🔥 3 di fila — tre nodi fanno una cucitura.',
+      7: '🔥 7 di fila — una settimana senza perdere il filo.',
+      30: '🔥 30 di fila — un mese cucito a mano. Chapeau.'
+    };
+    rs.textContent = milestone[sk] || ('🔥 Serie: ' + sk + ' giorni');
+    rs.hidden = false;
+  } else {
+    rs.hidden = true;
+  }
+  $('#share-preview').textContent = buildShareText();
+  $('#share-caption').textContent = vinta
+    ? 'La griglia racconta tutto senza svelare niente. Falla girare.'
+    : 'Anche una sconfitta è una bella storia. Sfida qualcuno a far meglio.';
+  $('#fallback-result').hidden = true;
+  risultatoMostrato = true;
+  // modal auto-aperto: alla chiusura il focus va su 📊 (UX §9.3)
+  openModal('modal-result', $('#btn-stats'));
+}
+
+/* Modal STATISTICHE (§13.4) */
+function renderStats(){
+  var b = $('#stats-body');
+  var pct = stats.giocate > 0 ? Math.round(stats.vinte / stats.giocate * 100) : 0;
+  var sk = streakEffettiva();
+  var maxDist = Math.max(1, stats.distFili[0], stats.distFili[1], stats.distFili[2]);
+  var html = '';
+  html += '<div id="stats-top">';
+  html += '<div><div class="big">' + stats.giocate + '</div><div class="caption">giocate</div></div>';
+  html += '<div><div class="big">' + pct + '%</div><div class="caption">vittorie</div></div>';
+  html += '<div><div class="big"><span aria-hidden="true">🔥</span> ' + sk + '</div><div class="caption">serie</div></div>';
+  html += '<div><div class="big">' + stats.maxStreak + '</div><div class="caption">max</div></div>';
+  html += '</div>';
+  html += '<div id="stats-dist"><h3>Vittorie per filo usato</h3>';
+  for (var i = 0; i < 3; i++) {
+    var v = stats.distFili[i];
+    var w = v > 0 ? Math.max(4, Math.round(v / maxDist * 100)) : 0;
+    html += '<div class="bar-row"><span class="lbl">' + (i + 1) + '° filo</span>' +
+      '<span class="bar-track"><span class="bar-fill" style="width:' + w + '%"></span></span>' +
+      '<span class="val">' + v + '</span></div>';
+  }
+  html += '</div>';
+  html += '<div id="stats-extra">';
+  html += '<div>Record caselle: <b>' + stats.recordCaselle + '/25</b></div>';
+  html += '<div>Sarto battuto: <b>' + stats.sartoBattuto + ' volte</b> <span aria-hidden="true">🥇</span></div>';
+  html += '</div>';
+  b.innerHTML = html;
+  $('#stats-cta-wrap').hidden = !gameOver;
+  $('#fallback-stats').hidden = true;
+}
+
+/* Demo onboarding (UX §8): dati fissi, loop ~5.2s, aria-hidden */
+var DEMO = {
+  valori: [2, 4, 1, 3, 5, 2, 1, 3, 4],
+  percorso: [0, 3, 4, 1],   // (r1,c1)→(r2,c1)→(r2,c2)→(r1,c2)
+  somme: [2, 5, 10, 14]
+};
+var demoTimers = [];
+var demoCells = [];
+function buildDemo(){
+  var g = $('#demo-grid');
+  g.innerHTML = '';
+  demoCells = [];
+  for (var i = 0; i < 9; i++) {
+    var d = document.createElement('div');
+    d.className = 'demo-cell';
+    d.textContent = DEMO.valori[i];
+    g.appendChild(d);
+    demoCells.push(d);
+  }
+}
+function demoCentro(i){
+  var r = (i / 3) | 0, c = i % 3;
+  return { x: c * 44 + 20, y: r * 44 + 20 };
+}
+function demoReset(){
+  demoCells.forEach(function(d){ d.classList.remove('in-filo'); });
+  $('#demo-line').setAttribute('points', '');
+  $('#demo-cap').setAttribute('opacity', '0');
+  var cnt = $('#demo-counter');
+  cnt.textContent = '0';
+  cnt.classList.remove('ok');
+  $('#demo-grid').parentElement.classList.remove('demo-fade');
+}
+function demoStatic(){
+  demoReset();
+  var pts = [];
+  DEMO.percorso.forEach(function(i, k){
+    demoCells[i].classList.add('in-filo');
+    var c = demoCentro(i);
+    pts.push(c.x + ',' + c.y);
+    if (k === 0) {
+      $('#demo-cap').setAttribute('cx', c.x);
+      $('#demo-cap').setAttribute('cy', c.y);
+      $('#demo-cap').setAttribute('opacity', '1');
+    }
+  });
+  $('#demo-line').setAttribute('points', pts.join(' '));
+  var cnt = $('#demo-counter');
+  cnt.textContent = '14 ✓';
+  cnt.classList.add('ok');
+}
+function startDemo(){
+  stopDemo();
+  buildDemo();
+  if (reducedMotion) { demoStatic(); return; } // frame statico finale, nessun loop
+  runDemoLoop();
+}
+function runDemoLoop(){
+  demoReset();
+  var pts = [];
+  function step(k){
+    var i = DEMO.percorso[k];
+    demoCells[i].classList.add('in-filo');
+    var c = demoCentro(i);
+    pts.push(c.x + ',' + c.y);
+    if (k === 0) {
+      $('#demo-cap').setAttribute('cx', c.x);
+      $('#demo-cap').setAttribute('cy', c.y);
+      $('#demo-cap').setAttribute('opacity', '1');
+    }
+    $('#demo-line').setAttribute('points', pts.join(' '));
+    $('#demo-counter').textContent = DEMO.somme[k];
+  }
+  demoTimers.push(setTimeout(function(){ step(0); }, 600));
+  demoTimers.push(setTimeout(function(){ step(1); }, 1300));
+  demoTimers.push(setTimeout(function(){ step(2); }, 2000));
+  demoTimers.push(setTimeout(function(){ step(3); }, 2700));
+  demoTimers.push(setTimeout(function(){
+    var cnt = $('#demo-counter');
+    cnt.textContent = '14 ✓';
+    cnt.classList.add('ok');
+  }, 2900));
+  demoTimers.push(setTimeout(function(){
+    $('#demo-grid').parentElement.classList.add('demo-fade');
+  }, 4300));
+  demoTimers.push(setTimeout(function(){ runDemoLoop(); }, 5200));
+}
+function stopDemo(){
+  demoTimers.forEach(clearTimeout);
+  demoTimers = [];
+}
+
+/* ---- 4.12 DAYWATCH — rilevamento cambio giorno (RF10) ---- */
+function checkNuovoGiorno(){
+  if (!puzzle) return;
+  var o = oggiParts();
+  var oggiStr = dateToStr(o.y, o.m, o.d);
+  if (oggiStr !== puzzle.data && bannerDismissedFor !== oggiStr) {
+    $('#banner-nuovo-giorno').hidden = false;
+  }
+}
+setInterval(checkNuovoGiorno, 30000);
+document.addEventListener('visibilitychange', function(){
+  if (!document.hidden) checkNuovoGiorno();
+});
+$('#banner-gioca').addEventListener('click', function(){
+  $('#banner-nuovo-giorno').hidden = true;
+  if (activeModal) closeModal(activeModal);
+  bootGiorno();
+});
+$('#banner-chiudi').addEventListener('click', function(){
+  var o = oggiParts();
+  bannerDismissedFor = dateToStr(o.y, o.m, o.d);
+  $('#banner-nuovo-giorno').hidden = true;
+});
+
+/* ---- 4.13 INIT — bootstrap: carica stato → genera puzzle → render ---- */
+function bootGiorno(){
+  var o = oggiParts();
+  var oggiStr = dateToStr(o.y, o.m, o.d);
+  var seed = seedFromDate(o.y, o.m, o.d);
+  var gen = generate(seed);
+  puzzle = {
+    numero: puzzleNumber(o.y, o.m, o.d),
+    valori: gen.valori, T: gen.T,
+    percorsoSarto: gen.percorsoSarto, L_sarto: gen.L_sarto,
+    data: oggiStr
+  };
+  fili = [];
+  filo = [];
+  somma = 0;
+  gameOver = false;
+  esitoFinale = null;
+  stelleOggi = 0;
+  sartoBattutoOggi = false;
+  percorsoVincente = null;
+  lockInput = false;
+  focusIdx = 0;
+  risultatoMostrato = false;
+  elSarto.setAttribute('points', '');
+  elSarto.style.strokeDasharray = '';
+  elSarto.style.strokeDashoffset = '';
+  resetSvgClassi();
+  buildBoard();
+  for (var i = 0; i < 25; i++) cells[i].classList.remove('sarto');
+
+  // ripristino del giorno (RF9 / flusso E): fili conclusi sì, filo a metà no
+  var today = store.get('filo.today', null);
+  if (today && today.data === oggiStr) {
+    fili = (today.fili || []).slice(0, CONFIG.FILI);
+    stelleOggi = today.stelle || 0;
+    sartoBattutoOggi = !!today.sartoBattuto;
+    percorsoVincente = today.percorsoVincente || null;
+    if (today.stato === 'vinta' || today.stato === 'persa') {
+      esitoFinale = today.stato;
+      gameOver = true;
+      if (percorsoVincente) { filo = percorsoVincente.slice(); somma = puzzle.T; }
+    } else if (fili.length >= CONFIG.FILI) {
+      // stato in-corso ma fili esauriti (reload avvenuto prima della valutazione finale)
+      esitoFinale = 'persa';
+      gameOver = true;
+      aggiornaStats(false, 3, 0, false);
+      salvaOggi('persa');
+    }
+  }
+  renderAll();
+  aggiornaTitoloOnboarding();
+
+  if (!store.get('filo.onboarded', false)) {
+    openModal('modal-help', null);
+  } else if (gameOver) {
+    // giorno già concluso: percorso statico, modal immediato (UX §7.5.4)
+    drawSarto(false);
+    updateCells();
+    apriRisultato();
+  }
+  if (gameOver && !store.get('filo.onboarded', false)) {
+    drawSarto(false);
+    updateCells();
+  }
+}
+function aggiornaTitoloOnboarding(){
+  $('#btn-onboard-play').textContent = 'Gioca il FILO #' + puzzle.numero;
+}
+
+stats = store.get('filo.stats', null) || defaultStats();
+if (!Array.isArray(stats.distFili) || stats.distFili.length !== 3) stats.distFili = [0, 0, 0];
+bootGiorno();
+
+/* ---- Debug/QA (§7.6): SOLO con location.hash === '#debug' ---- */
+if (location.hash === '#debug') {
+  window.__filoDebug = {
+    numero: puzzle.numero,
+    valori: puzzle.valori.slice(),
+    T: puzzle.T,
+    percorsoSarto: puzzle.percorsoSarto.slice(),
+    buildShareText: buildShareText,
+    /* genera un puzzle da un seed arbitrario SENZA toccare lo stato (funzione pura) */
+    generateForSeed: function(seed){ return generate(seed); }
+  };
+}
+
+})();
+</script>
+</body>
+</html>

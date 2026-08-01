@@ -10,7 +10,7 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="FILO — il puzzle quotidiano">
 <meta property="og:description" content="Ogni giorno una griglia 5×5, un numero da raggiungere e tre fili per battere il Sarto.">
-<meta property="og:url" content="https://filo-game-liard.vercel.app">
+<meta property="og:url" content="https://filo-game.vercel.app">
 <meta property="og:site_name" content="FILO">
 <meta property="og:locale" content="it_IT">
 <meta name="twitter:card" content="summary">
@@ -73,7 +73,7 @@
 
 /* ---- 2.2 Reset minimale + layout base ---- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 100%; }
+html { font-size: 100%; overscroll-behavior: none; }
 body{
   background: var(--bg);
   color: var(--text);
@@ -82,6 +82,7 @@ body{
   line-height: 1.6;
   min-height: 100vh;
   padding-top: env(safe-area-inset-top);
+  overscroll-behavior: none;            /* blocca il pull-to-refresh e il rimbalzo */
 }
 main{
   max-width: 480px;
@@ -594,7 +595,7 @@ var CONFIG = {
   CELLS: 25,
   FILI: 3,
   /* §9.1: riga URL nel testo condiviso SOLO se non vuota (solo web; su iOS ShareLink la passa a parte) */
-  SHARE_URL: 'https://filo-game-liard.vercel.app'
+  SHARE_URL: 'https://filo-game.vercel.app'
 };
 var MS_GIORNO = 86400000;
 var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;

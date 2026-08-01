@@ -8,6 +8,7 @@ struct FiloApp: App {
     @StateObject private var viewModel = GameViewModel()
     @StateObject private var theme = ThemeManager()
     @StateObject private var store = Store()
+    @StateObject private var account = Account()
 
     var body: some Scene {
         WindowGroup {
@@ -15,6 +16,7 @@ struct FiloApp: App {
                 .environmentObject(viewModel)
                 .environmentObject(theme)
                 .environmentObject(store)
+                .environmentObject(account)
         }
     }
 }

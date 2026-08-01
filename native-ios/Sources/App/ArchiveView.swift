@@ -17,7 +17,7 @@ struct ArchiveView: View {
     var body: some View {
         ZStack {
             Theme.bgGradient.ignoresSafeArea()
-            if !store.isPro {
+            if !store.featuresUnlocked {
                 paywall
             } else if giorni.isEmpty {
                 vuoto

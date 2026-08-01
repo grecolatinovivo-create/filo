@@ -1,16 +1,19 @@
 import SwiftUI
+import AuthenticationServices
 
-/// PROFILO / IMPOSTAZIONI (locale, senza login). Stato dell'acquisto extra,
-/// scelta del tema, accesso all'archivio, ripristino acquisti. È qui che vive
-/// la monetizzazione: un unico acquisto sblocca temi + archivio (e, in futuro,
-/// toglierà eventuali pubblicità).
+/// PROFILO / IMPOSTAZIONI (locale). L'app è gratis: tutti gli extra sono
+/// sbloccati. Qui vivono: accesso con Apple ID (opzionale), scelta del tema,
+/// archivio, e — per l'admin/tester — gli strumenti di test.
 struct ProfileView: View {
     @EnvironmentObject private var vm: GameViewModel
     @EnvironmentObject private var store: Store
     @EnvironmentObject private var theme: ThemeManager
+    @EnvironmentObject private var account: Account
     @Environment(\.dismiss) private var dismiss
 
     @State private var mostraArchivio = false
+
+    private var mostraStrumentiAdmin: Bool { store.isSandbox || account.isAdmin }
 
     var body: some View {
         ZStack {
@@ -18,8 +21,8 @@ struct ProfileView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     header
-                    statoAccount
-                    if store.isSandbox { testerSezione }
+                    accessoSezione
+                    if mostraStrumentiAdmin { testerSezione }
                     temiSezione
                     archivioSezione
                     infoSezione
@@ -31,13 +34,6 @@ struct ProfileView: View {
         }
         .preferredColorScheme(.dark)
         .sheet(isPresented: $mostraArchivio) { ArchiveView() }
-        .alert("FILO", isPresented: Binding(
-            get: { store.messaggio != nil },
-            set: { if !$0 { store.messaggio = nil } })) {
-            Button("OK", role: .cancel) { store.messaggio = nil }
-        } message: {
-            Text(store.messaggio ?? "")
-        }
     }
 
     private var header: some View {
@@ -57,48 +53,69 @@ struct ProfileView: View {
         }
     }
 
-    // MARK: Stato account / acquisto
+    // MARK: Accesso (Apple ID, opzionale) — app gratis
 
-    private var statoAccount: some View {
+    private var accessoSezione: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
-                Text(store.isPro ? "🧵✨" : "🧵").font(.title)
+                Text(account.isAdmin ? "🧵👑" : "🧵").font(.title)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(store.isPro ? "Extra sbloccati" : "FILO free")
+                    Text(titoloAccesso)
                         .font(.headline).foregroundStyle(Theme.text)
-                    Text(store.isPro
-                         ? "Grazie! Temi e archivio sono tuoi."
-                         : "Un acquisto unico sblocca temi e archivio.")
+                    Text(sottotitoloAccesso)
                         .font(.caption).foregroundStyle(Theme.textMuted)
                 }
                 Spacer()
             }
-            if !store.isPro {
-                Button(store.prezzoExtra.map { "Sblocca extra · \($0)" } ?? "Sblocca extra") {
-                    Task { await store.acquistaExtra() }
+
+            if account.isLoggedIn {
+                if account.isAdmin {
+                    Text("Admin — tutto sbloccato")
+                        .font(.caption.weight(.bold)).foregroundStyle(Theme.filo)
                 }
-                .buttonStyle(PrimaryButtonStyle())
-                .frame(maxWidth: .infinity)
-                .disabled(store.inCorso)
+                // ID mostrato per poter abilitare l'admin in futuro.
+                Text("ID: \(account.userID ?? "")")
+                    .font(.caption2.monospaced()).foregroundStyle(Theme.textMuted)
+                    .textSelection(.enabled)
+                    .lineLimit(1).truncationMode(.middle)
+                Button("Esci") { account.esci() }
+                    .font(.subheadline).foregroundStyle(Theme.filo)
+                    .frame(minHeight: 44)
+            } else {
+                SignInWithAppleButton(.signIn,
+                                      onRequest: account.configura,
+                                      onCompletion: account.gestisci)
+                    .signInWithAppleButtonStyle(.white)
+                    .frame(height: 48)
+                    .clipShape(Capsule())
+                Text("Facoltativo: gioca anche senza accedere.")
+                    .font(.caption2).foregroundStyle(Theme.textMuted)
             }
-            Button("Ripristina acquisti") { Task { await store.ripristina() } }
-                .font(.subheadline)
-                .foregroundStyle(Theme.filo)
-                .frame(minHeight: 44)
         }
         .padding(16)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.border, lineWidth: 1))
     }
 
-    // MARK: Modalità tester (solo TestFlight/sandbox)
+    private var titoloAccesso: String {
+        if let n = account.nome, !n.isEmpty { return "Ciao, \(n)" }
+        return account.isLoggedIn ? "Accesso effettuato" : "FILO è gratis"
+    }
+
+    private var sottotitoloAccesso: String {
+        account.isLoggedIn
+            ? "Tutti gli extra sono sbloccati."
+            : "Tutti gli extra sono sbloccati, nessun acquisto."
+    }
+
+    // MARK: Strumenti admin/tester
 
     private var testerSezione: some View {
         VStack(alignment: .leading, spacing: 8) {
             Toggle(isOn: $store.testerUnlock) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Modalità tester").font(.body.weight(.semibold)).foregroundStyle(Theme.text)
-                    Text("Sblocca tutti gli extra senza acquisto (solo in test).")
+                    Text("Strumenti admin/tester").font(.body.weight(.semibold)).foregroundStyle(Theme.text)
+                    Text("Forza lo sblocco di tutto (utile per provare).")
                         .font(.caption).foregroundStyle(Theme.textMuted)
                 }
             }
@@ -109,7 +126,7 @@ struct ProfileView: View {
         .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.filo.opacity(0.4), lineWidth: 1))
     }
 
-    // MARK: Temi
+    // MARK: Temi (tutti sbloccati)
 
     private var temiSezione: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -123,12 +140,12 @@ struct ProfileView: View {
     }
 
     private func temaChip(_ t: ThemeID) -> some View {
-        let bloccato = t.premium && !store.isPro
+        let bloccato = t.premium && !store.featuresUnlocked
         let selezionato = theme.id == t
         let p = t.palette
         return Button {
-            if bloccato { Task { await store.acquistaExtra() } }
-            else { theme.seleziona(t, sbloccato: store.isPro) }
+            if bloccato { return }
+            theme.seleziona(t, sbloccato: store.featuresUnlocked)
         } label: {
             VStack(spacing: 6) {
                 ZStack {
@@ -157,7 +174,7 @@ struct ProfileView: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(t.nome)\(bloccato ? ", bloccato" : selezionato ? ", selezionato" : "")")
+        .accessibilityLabel("\(t.nome)\(selezionato ? ", selezionato" : "")")
     }
 
     // MARK: Archivio
@@ -168,12 +185,10 @@ struct ProfileView: View {
                 Text("🗂️").font(.title2)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Archivio FILO").font(.body.weight(.semibold)).foregroundStyle(Theme.text)
-                    Text(store.isPro ? "Rigioca i puzzle passati" : "Extra — sbloccalo per rigiocare")
-                        .font(.caption).foregroundStyle(Theme.textMuted)
+                    Text("Rigioca i puzzle passati").font(.caption).foregroundStyle(Theme.textMuted)
                 }
                 Spacer()
-                Image(systemName: store.isPro ? "chevron.right" : "lock.fill")
-                    .foregroundStyle(Theme.textMuted)
+                Image(systemName: "chevron.right").foregroundStyle(Theme.textMuted)
             }
             .padding(16)
             .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
@@ -188,7 +203,7 @@ struct ProfileView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("FILO — il puzzle quotidiano")
                 .font(.caption).foregroundStyle(Theme.textMuted)
-            Text("Nessun account, nessun tracciamento, gioca offline.")
+            Text("Nessun tracciamento, gioca offline.")
                 .font(.caption).foregroundStyle(Theme.textMuted)
             Link("Gioca sul web", destination: URL(string: "https://filo-game-liard.vercel.app")!)
                 .font(.caption).foregroundStyle(Theme.filo)

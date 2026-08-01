@@ -56,6 +56,11 @@ final class Store: ObservableObject {
     /// isPro = diritto d'acquisto firmato da Apple OPPURE sblocco tester.
     private func ricalcola() { isPro = entitlementPro || testerUnlock }
 
+    /// Gli extra (temi, archivio) sono accessibili quando l'app è gratis per
+    /// tutti (Fase 0) oppure quando l'utente ha i diritti. Le viste usano
+    /// QUESTO per decidere cosa sbloccare.
+    var featuresUnlocked: Bool { AppConfig.everythingFree || isPro }
+
     /// Carica il prodotto e lo stato dei diritti all'avvio.
     func bootstrap() async {
         await caricaProdotti()

@@ -34,6 +34,13 @@ struct ProfileView: View {
         }
         .preferredColorScheme(.dark)
         .sheet(isPresented: $mostraArchivio) { ArchiveView() }
+        .alert("Accesso Apple", isPresented: Binding(
+            get: { account.errore != nil },
+            set: { if !$0 { account.errore = nil } })) {
+            Button("OK", role: .cancel) { account.errore = nil }
+        } message: {
+            Text(account.errore ?? "")
+        }
     }
 
     private var header: some View {
@@ -82,12 +89,19 @@ struct ProfileView: View {
                     .font(.subheadline).foregroundStyle(Theme.filo)
                     .frame(minHeight: 44)
             } else {
-                SignInWithAppleButton(.signIn,
-                                      onRequest: account.configura,
-                                      onCompletion: account.gestisci)
-                    .signInWithAppleButtonStyle(.white)
-                    .frame(height: 48)
-                    .clipShape(Capsule())
+                Button {
+                    account.accedi()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "apple.logo")
+                        Text("Accedi con Apple").font(.body.weight(.semibold))
+                    }
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .background(.white, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(account.inCorso)
                 Text("Facoltativo: gioca anche senza accedere.")
                     .font(.caption2).foregroundStyle(Theme.textMuted)
             }

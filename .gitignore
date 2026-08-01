@@ -1,0 +1,15 @@
+.DS_Store
+.env
+.env.*
+node_modules/
+.vercel/
+AuthKey*
+*.aab
+*.apk
+*.ipa
+**/build/
+**/.gradle/
+**/DerivedData/
+*.xcuserstate
+*.xcodeproj/
+.build/

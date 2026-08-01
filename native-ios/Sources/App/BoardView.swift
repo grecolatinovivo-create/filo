@@ -28,6 +28,12 @@ struct BoardView: View {
                 }
                 overlayFili(side: side)
             }
+            // Le caselle sono posizionate con .offset (spostamento SOLO visivo):
+            // senza un frame esplicito la ZStack resterebbe grande una casella e
+            // il gesto partirebbe solo dall'angolo in alto a sinistra. Diamo alla
+            // ZStack la dimensione piena della griglia, così il tocco e il drag
+            // coprono TUTTE le caselle, ovunque siano.
+            .frame(width: geo.size.width, height: geo.size.width, alignment: .topLeading)
             .contentShape(Rectangle())
             .gesture(dragGesture(side: side))
         }

@@ -296,6 +296,7 @@ private struct ArchiveBoard: View {
                 }
                 overlay(side: side)
             }
+            .frame(width: geo.size.width, height: geo.size.width, alignment: .topLeading)
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0, coordinateSpace: .local)

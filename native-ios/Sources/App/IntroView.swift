@@ -82,18 +82,20 @@ struct IntroView: View {
     private func run() async {
         if reduceMotion {
             trimEnd = 1; endDot = true; wordmark = true; tagline = true
-            try? await Task.sleep(nanoseconds: 900_000_000)
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
             onFinish()
             return
         }
-        withAnimation(.easeInOut(duration: 1.25)) { trimEnd = 1 }
-        try? await Task.sleep(nanoseconds: 1_150_000_000)
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) { endDot = true }
-        try? await Task.sleep(nanoseconds: 150_000_000)
-        withAnimation(.easeOut(duration: 0.45)) { wordmark = true }
-        try? await Task.sleep(nanoseconds: 350_000_000)
-        withAnimation(.easeOut(duration: 0.4)) { tagline = true }
-        try? await Task.sleep(nanoseconds: 950_000_000)
+        // Disegno del filo più lento e con un respiro finale più lungo, così
+        // l'intro non "sparisce subito" (durata totale ~4,6s).
+        withAnimation(.easeInOut(duration: 1.9)) { trimEnd = 1 }
+        try? await Task.sleep(nanoseconds: 1_850_000_000)
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.7)) { endDot = true }
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        withAnimation(.easeOut(duration: 0.55)) { wordmark = true }
+        try? await Task.sleep(nanoseconds: 550_000_000)
+        withAnimation(.easeOut(duration: 0.5)) { tagline = true }
+        try? await Task.sleep(nanoseconds: 2_000_000_000)
         onFinish()
     }
 }

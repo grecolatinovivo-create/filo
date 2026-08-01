@@ -12,6 +12,8 @@ options:
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
+  developmentLanguage: it
+  knownRegions: [it, en, fr, es, de, zh-Hans, pt-BR, ja]
 
 settings:
   base:
@@ -55,6 +57,8 @@ targets:
       properties:
         CFBundleDisplayName: FILO
         CFBundleName: FILO
+        CFBundleDevelopmentRegion: it
+        CFBundleLocalizations: [it, en, fr, es, de, zh-Hans, pt-BR, ja]
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen:

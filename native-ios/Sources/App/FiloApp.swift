@@ -6,11 +6,15 @@ import SwiftUI
 @main
 struct FiloApp: App {
     @StateObject private var viewModel = GameViewModel()
+    @StateObject private var theme = ThemeManager()
+    @StateObject private var store = Store()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(viewModel)
+                .environmentObject(theme)
+                .environmentObject(store)
         }
     }
 }

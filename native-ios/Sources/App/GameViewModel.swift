@@ -13,7 +13,7 @@ final class GameViewModel: ObservableObject {
     // MARK: Tipi
 
     enum Scheda: String, Identifiable {
-        case comeSiGioca, risultato, statistiche
+        case comeSiGioca, risultato, statistiche, profilo
         var id: String { rawValue }
     }
 

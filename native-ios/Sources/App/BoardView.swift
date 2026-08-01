@@ -89,16 +89,22 @@ struct BoardView: View {
             }
             // filo corrente
             if let primo = vm.engine.filo.first {
+                // marcatore di PARTENZA: anello chiaro attorno al punto d'inizio,
+                // così è evidente che il filo parte dalla casella toccata (qualsiasi).
                 Circle()
-                    .fill(Theme.filo)
-                    .frame(width: 10, height: 10)
+                    .stroke(Theme.sarto, lineWidth: 2)
+                    .frame(width: 18, height: 18)
+                    .position(centro(primo, side: side))
+                Circle()
+                    .fill(Theme.filoGradient)
+                    .frame(width: 11, height: 11)
                     .position(centro(primo, side: side))
                 if vm.engine.filo.count >= 2 {
                     PolylineShape(points: vm.engine.filo.map { centro($0, side: side) })
                         .trim(from: 0, to: trimFilo)
-                        .stroke(Theme.filo,
+                        .stroke(Theme.filoGradient,
                                 style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
-                        .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
+                        .shadow(color: Theme.filo.opacity(0.6), radius: 4, y: 0)
                 }
             }
         }
@@ -208,13 +214,13 @@ struct CellView: View {
         let flashNonValida = reduceMotion && vm.casellaNonValida == idx
 
         ZStack {
-            RoundedRectangle(cornerRadius: 10)
-                .fill(inFilo ? Theme.filo : Theme.surface2)
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: 12)
+                .fill(inFilo ? AnyShapeStyle(Theme.cellaAccesa) : AnyShapeStyle(Theme.surface2))
+            RoundedRectangle(cornerRadius: 12)
                 .strokeBorder(flashNonValida ? Theme.spezzato
                               : (inFilo ? Theme.filoScuro : Theme.border), lineWidth: 1)
             if sulSarto {
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: 9)
                     .strokeBorder(Theme.sarto,
                                   style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
                     .padding(2)
@@ -227,17 +233,21 @@ struct CellView: View {
         }
         .overlay(alignment: .topTrailing) {
             if let p = pos {
+                // contatore d'ordine come chip circolare: chiaramente "passo n",
+                // non un vincolo di partenza.
                 Text("\(p + 1)")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .foregroundStyle(Theme.bg)
-                    .padding(.top, 3)
-                    .padding(.trailing, 5)
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundStyle(Theme.filo)
+                    .frame(width: 16, height: 16)
+                    .background(Theme.bg.opacity(0.85), in: Circle())
+                    .overlay(Circle().strokeBorder(Theme.filo.opacity(0.5), lineWidth: 1))
+                    .padding(3)
             }
         }
         .overlay {
             if ultima {
-                RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(Theme.filo.opacity(reduceMotion ? 0.4 : (pulse ? 0.15 : 0.4)),
+                RoundedRectangle(cornerRadius: 14)
+                    .strokeBorder(Theme.filo.opacity(reduceMotion ? 0.5 : (pulse ? 0.2 : 0.6)),
                                   lineWidth: 3)
                     .padding(-3)
                     .onAppear {

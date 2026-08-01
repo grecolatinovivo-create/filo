@@ -14,7 +14,7 @@ struct StatsView: View {
 
     var body: some View {
         ZStack {
-            Theme.surface.ignoresSafeArea()
+            Theme.bgGradient.ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     HStack {

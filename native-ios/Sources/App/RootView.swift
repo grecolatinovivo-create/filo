@@ -5,13 +5,15 @@ import FiloCore
 /// Schermata principale (GIOCO, wireframe README §13.1) + navigazione a schede.
 struct RootView: View {
     @EnvironmentObject private var vm: GameViewModel
+    @EnvironmentObject private var theme: ThemeManager   // ridisegna al cambio tema
+    @EnvironmentObject private var store: Store
     @Environment(\.scenePhase) private var scenePhase
 
     private let timerGiorno = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     var body: some View {
         ZStack(alignment: .top) {
-            Theme.bg.ignoresSafeArea()
+            Theme.bgGradient.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 header
@@ -23,6 +25,7 @@ struct RootView: View {
                             .frame(maxWidth: 420)
                         strappaButton
                             .padding(.top, 8)
+                        AdSlot(isPro: store.isPro)
                     }
                     .frame(maxWidth: 480)
                     .frame(maxWidth: .infinity)
@@ -40,6 +43,7 @@ struct RootView: View {
             case .comeSiGioca: OnboardingView()
             case .risultato: ResultView()
             case .statistiche: StatsView()
+            case .profilo: ProfileView()
             }
         }
         .confirmationDialog("Strappare il filo?",
@@ -60,12 +64,12 @@ struct RootView: View {
     // MARK: Header
 
     private var header: some View {
-        HStack {
+        HStack(spacing: 0) {
             Button {
                 vm.scheda = .comeSiGioca
             } label: {
-                Text("?")
-                    .font(.title3.weight(.bold))
+                Image(systemName: "questionmark.circle")
+                    .font(.title3.weight(.semibold))
                     .foregroundStyle(Theme.textMuted)
                     .frame(width: 44, height: 44)
             }
@@ -81,14 +85,27 @@ struct RootView: View {
 
             Spacer()
 
-            Button {
-                vm.scheda = .statistiche
-            } label: {
-                Text("📊")
-                    .font(.title3)
-                    .frame(width: 44, height: 44)
+            HStack(spacing: 0) {
+                Button {
+                    vm.scheda = .statistiche
+                } label: {
+                    Image(systemName: "chart.bar.fill")
+                        .font(.title3)
+                        .foregroundStyle(Theme.textMuted)
+                        .frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Statistiche")
+
+                Button {
+                    vm.scheda = .profilo
+                } label: {
+                    Image(systemName: store.isPro ? "person.crop.circle.badge.checkmark" : "person.crop.circle")
+                        .font(.title3)
+                        .foregroundStyle(store.isPro ? Theme.filo : Theme.textMuted)
+                        .frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Profilo e temi")
             }
-            .accessibilityLabel("Statistiche")
         }
         .padding(.horizontal, 8)
         .frame(height: 56)
@@ -115,7 +132,7 @@ struct RootView: View {
                 .foregroundStyle(Theme.bg)
                 .padding(.vertical, 8)
                 .padding(.horizontal, 20)
-                .background(Theme.filo, in: Capsule())
+                .background(Theme.filoGradient, in: Capsule())
             Button {
                 vm.nascondiBanner()
             } label: {
@@ -146,7 +163,7 @@ struct HUDView: View {
             Text("\(vm.puzzle.T)")
                 .font(.system(size: 48, weight: .bold, design: .monospaced))
                 .monospacedDigit()
-                .foregroundStyle(Theme.text)
+                .foregroundStyle(Theme.filoGradient)
                 .accessibilityLabel("Somma del giorno: \(vm.puzzle.T)")
             Text("Il Sarto: \(vm.puzzle.lSarto) caselle · minimo \(vm.engine.caselleMinime)")
                 .captionStyle()

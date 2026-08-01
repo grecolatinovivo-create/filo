@@ -20,7 +20,7 @@ struct ResultView: View {
 
     var body: some View {
         ZStack {
-            Theme.surface.ignoresSafeArea()
+            Theme.bgGradient.ignoresSafeArea()
             ScrollView {
                 VStack(spacing: 12) {
                     // 1. eyebrow

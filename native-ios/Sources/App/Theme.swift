@@ -1,21 +1,171 @@
 import SwiftUI
 
-/// Design system "sartoria notturna" — palette esatta UX_SPEC §2 (normativa).
+/// Un tema è una palette di colori. Restano gli stessi token del design system
+/// originale (UX_SPEC §2), ma ora sono selezionabili: il tema di default è
+/// gratuito, gli altri sono un "extra" sbloccabile con l'acquisto in-app.
+struct Palette: Equatable {
+    let bg: Color
+    let bg2: Color          // secondo stop del gradiente di sfondo
+    let surface: Color
+    let surface2: Color
+    let border: Color
+    let text: Color
+    let textMuted: Color
+    let filo: Color
+    let filoHover: Color
+    let filoScuro: Color     // SOLO bordi decorativi
+    let sarto: Color
+    let ok: Color
+    let spezzato: Color
+    let annodato: Color
+    let overlay: Color
+
+    /// Gradiente di sfondo (angolare morbido) — cuore del look "colorato".
+    var bgGradient: LinearGradient {
+        LinearGradient(colors: [bg, bg2], startPoint: .top, endPoint: .bottom)
+    }
+    /// Gradiente del filo del giocatore (caldo, con brillantezza).
+    var filoGradient: LinearGradient {
+        LinearGradient(colors: [filoHover, filo], startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+    /// Riempimento di una casella accesa.
+    var cellaAccesa: LinearGradient {
+        LinearGradient(colors: [filoHover, filo], startPoint: .top, endPoint: .bottom)
+    }
+}
+
+/// Catalogo dei temi. `notte` è gratuito; gli altri richiedono l'acquisto extra.
+enum ThemeID: String, CaseIterable, Identifiable, Codable {
+    case notte, aurora, tramonto, foresta, ciclamino
+
+    var id: String { rawValue }
+
+    var nome: String {
+        switch self {
+        case .notte:     return "Notte"
+        case .aurora:    return "Aurora"
+        case .tramonto:  return "Tramonto"
+        case .foresta:   return "Foresta"
+        case .ciclamino: return "Ciclamino"
+        }
+    }
+
+    /// True se il tema fa parte del pacchetto extra a pagamento.
+    var premium: Bool { self != .notte }
+
+    var palette: Palette {
+        switch self {
+        case .notte:
+            // Default gratuito: dark ricco blu-notte con filo oro caldo.
+            return Palette(
+                bg: Color(hexRGB: 0x11151F), bg2: Color(hexRGB: 0x1A1030),
+                surface: Color(hexRGB: 0x1B2233), surface2: Color(hexRGB: 0x263149),
+                border: Color(hexRGB: 0x33405C), text: Color(hexRGB: 0xF2F5FB),
+                textMuted: Color(hexRGB: 0x9FB0CC), filo: Color(hexRGB: 0xF5B531),
+                filoHover: Color(hexRGB: 0xFFD15C), filoScuro: Color(hexRGB: 0x8A6A1F),
+                sarto: Color(hexRGB: 0xF7E7B4), ok: Color(hexRGB: 0x38D39F),
+                spezzato: Color(hexRGB: 0xFF6B6B), annodato: Color(hexRGB: 0x6EA8FE),
+                overlay: Color(hexRGB: 0x05070D).opacity(0.74))
+        case .aurora:
+            // Viola-teal con filo verde-acqua brillante.
+            return Palette(
+                bg: Color(hexRGB: 0x0E1428), bg2: Color(hexRGB: 0x241546),
+                surface: Color(hexRGB: 0x1A2340), surface2: Color(hexRGB: 0x263156),
+                border: Color(hexRGB: 0x3A2E6B), text: Color(hexRGB: 0xF3F1FF),
+                textMuted: Color(hexRGB: 0xAEA6D6), filo: Color(hexRGB: 0x2EE6C9),
+                filoHover: Color(hexRGB: 0x67F3DC), filoScuro: Color(hexRGB: 0x1B7E6E),
+                sarto: Color(hexRGB: 0xC9F7EF), ok: Color(hexRGB: 0x2EE6C9),
+                spezzato: Color(hexRGB: 0xFF6E9C), annodato: Color(hexRGB: 0x8B8CFF),
+                overlay: Color(hexRGB: 0x070512).opacity(0.76))
+        case .tramonto:
+            // Rosso-magenta caldo con filo ambra.
+            return Palette(
+                bg: Color(hexRGB: 0x1C0F1A), bg2: Color(hexRGB: 0x3A1424),
+                surface: Color(hexRGB: 0x2A1622), surface2: Color(hexRGB: 0x3E2130),
+                border: Color(hexRGB: 0x5A2C3F), text: Color(hexRGB: 0xFFF2EE),
+                textMuted: Color(hexRGB: 0xD7A9AE), filo: Color(hexRGB: 0xFF9F45),
+                filoHover: Color(hexRGB: 0xFFBE6E), filoScuro: Color(hexRGB: 0x9A5A22),
+                sarto: Color(hexRGB: 0xFFE0BE), ok: Color(hexRGB: 0x4FD08A),
+                spezzato: Color(hexRGB: 0xFF5C7A), annodato: Color(hexRGB: 0xC58BFF),
+                overlay: Color(hexRGB: 0x0F0509).opacity(0.76))
+        case .foresta:
+            // Verde profondo con filo lime.
+            return Palette(
+                bg: Color(hexRGB: 0x0D1A15), bg2: Color(hexRGB: 0x102A1E),
+                surface: Color(hexRGB: 0x142720), surface2: Color(hexRGB: 0x1E3A2E),
+                border: Color(hexRGB: 0x2C5140), text: Color(hexRGB: 0xEFF7F1),
+                textMuted: Color(hexRGB: 0x9FC4AE), filo: Color(hexRGB: 0xB6E44B),
+                filoHover: Color(hexRGB: 0xCEF56E), filoScuro: Color(hexRGB: 0x5E7E22),
+                sarto: Color(hexRGB: 0xE6F7C4), ok: Color(hexRGB: 0x53D98A),
+                spezzato: Color(hexRGB: 0xFF7A6B), annodato: Color(hexRGB: 0x5FC7E4),
+                overlay: Color(hexRGB: 0x040A07).opacity(0.76))
+        case .ciclamino:
+            // Rosa-indaco vivace con filo fucsia.
+            return Palette(
+                bg: Color(hexRGB: 0x140F26), bg2: Color(hexRGB: 0x2A123F),
+                surface: Color(hexRGB: 0x201640), surface2: Color(hexRGB: 0x2F2056),
+                border: Color(hexRGB: 0x453070), text: Color(hexRGB: 0xF6F0FF),
+                textMuted: Color(hexRGB: 0xBBA6DE), filo: Color(hexRGB: 0xFF5FBD),
+                filoHover: Color(hexRGB: 0xFF87D0), filoScuro: Color(hexRGB: 0x9A2E77),
+                sarto: Color(hexRGB: 0xFFD1EE), ok: Color(hexRGB: 0x46D9B0),
+                spezzato: Color(hexRGB: 0xFF6B6B), annodato: Color(hexRGB: 0x7C8CFF),
+                overlay: Color(hexRGB: 0x08040F).opacity(0.78))
+        }
+    }
+}
+
+/// Sorgente del tema attivo. `Theme.*` legge da qui, così le viste che
+/// osservano questo oggetto si ridisegnano al cambio tema senza toccare i
+/// call-site esistenti.
+@MainActor
+final class ThemeManager: ObservableObject {
+    @Published var id: ThemeID {
+        didSet {
+            Theme.current = id.palette
+            UserDefaults.standard.set(id.rawValue, forKey: Self.key)
+        }
+    }
+
+    private static let key = "filo.theme"
+
+    init() {
+        let saved = UserDefaults.standard.string(forKey: Self.key)
+        let start = saved.flatMap(ThemeID.init(rawValue:)) ?? .notte
+        id = start
+        Theme.current = start.palette
+    }
+
+    /// Sceglie un tema solo se sbloccato (i premium richiedono l'acquisto).
+    func seleziona(_ nuovo: ThemeID, sbloccato: Bool) {
+        guard !nuovo.premium || sbloccato else { return }
+        id = nuovo
+    }
+}
+
+/// Facciata statica: mantiene i vecchi call-site `Theme.bg`, `Theme.filo`, ecc.,
+/// ma ora restituisce i colori del tema attivo (aggiornato da ThemeManager).
 enum Theme {
-    static let bg        = Color(hexRGB: 0x101418)
-    static let surface   = Color(hexRGB: 0x1B222B)
-    static let surface2  = Color(hexRGB: 0x232C37)
-    static let border    = Color(hexRGB: 0x2C3642)
-    static let text      = Color(hexRGB: 0xECEFF3)
-    static let textMuted = Color(hexRGB: 0x97A3B2)
-    static let filo      = Color(hexRGB: 0xE8B84B)
-    static let filoHover = Color(hexRGB: 0xF0C563)
-    static let filoScuro = Color(hexRGB: 0x8A6A1F)   // SOLO bordi decorativi
-    static let sarto     = Color(hexRGB: 0xF5E6BC)
-    static let ok        = Color(hexRGB: 0x43A06B)
-    static let spezzato  = Color(hexRGB: 0xE56060)
-    static let annodato  = Color(hexRGB: 0x6C93E4)
-    static let overlay   = Color(hexRGB: 0x080A0D).opacity(0.72)
+    static var current: Palette = ThemeID.notte.palette
+
+    static var bg: Color        { current.bg }
+    static var bg2: Color       { current.bg2 }
+    static var surface: Color   { current.surface }
+    static var surface2: Color  { current.surface2 }
+    static var border: Color    { current.border }
+    static var text: Color      { current.text }
+    static var textMuted: Color { current.textMuted }
+    static var filo: Color      { current.filo }
+    static var filoHover: Color { current.filoHover }
+    static var filoScuro: Color { current.filoScuro }
+    static var sarto: Color     { current.sarto }
+    static var ok: Color        { current.ok }
+    static var spezzato: Color  { current.spezzato }
+    static var annodato: Color  { current.annodato }
+    static var overlay: Color   { current.overlay }
+
+    static var bgGradient: LinearGradient { current.bgGradient }
+    static var filoGradient: LinearGradient { current.filoGradient }
+    static var cellaAccesa: LinearGradient { current.cellaAccesa }
 }
 
 extension Color {
@@ -37,7 +187,7 @@ struct CaptionStyle: ViewModifier {
     }
 }
 
-/// Bottone primario pill dorato (UX_SPEC §5.2).
+/// Bottone primario pill (ora con gradiente del tema, UX_SPEC §5.2).
 struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -46,8 +196,12 @@ struct PrimaryButtonStyle: ButtonStyle {
             .padding(.vertical, 14)
             .padding(.horizontal, 28)
             .frame(minHeight: 48)
-            .background(configuration.isPressed ? Theme.filoHover : Theme.filo)
+            .background(Theme.filoGradient)
             .clipShape(Capsule())
+            .overlay(Capsule().strokeBorder(Theme.filoHover.opacity(0.5), lineWidth: 1))
+            .shadow(color: Theme.filo.opacity(configuration.isPressed ? 0.15 : 0.35),
+                    radius: configuration.isPressed ? 4 : 12, y: 3)
+            .opacity(configuration.isPressed ? 0.9 : 1)
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
     }
 }

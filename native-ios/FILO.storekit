@@ -1,0 +1,28 @@
+{
+  "identifier" : "FILO-LocalStoreKit",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "1.99",
+      "familyShareable" : false,
+      "internalID" : "filo-extra-001",
+      "localizations" : [
+        {
+          "description" : "Sblocca i temi colorati e l'archivio dei FILO passati. Acquisto unico.",
+          "displayName" : "Sblocca extra",
+          "locale" : "it_IT"
+        }
+      ],
+      "productID" : "com.grecolatinovivo.filo.extra",
+      "referenceName" : "Sblocca extra",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+  },
+  "subscriptionGroups" : [],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

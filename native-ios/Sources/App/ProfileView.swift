@@ -111,7 +111,7 @@ struct ProfileView: View {
     // MARK: Strumenti admin/tester
 
     private var testerSezione: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             Toggle(isOn: $store.testerUnlock) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Strumenti admin/tester").font(.body.weight(.semibold)).foregroundStyle(Theme.text)
@@ -120,6 +120,30 @@ struct ProfileView: View {
                 }
             }
             .tint(Theme.filo)
+
+            HStack(spacing: 10) {
+                Button {
+                    vm.testerAzzera(); dismiss()
+                } label: {
+                    Label("Azzera filo", systemImage: "arrow.counterclockwise")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .background(Theme.surface2, in: RoundedRectangle(cornerRadius: 12))
+                        .foregroundStyle(Theme.text)
+                }
+                Button {
+                    vm.testerNuoviNumeri(); dismiss()
+                } label: {
+                    Label("Nuovi numeri", systemImage: "dice")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .background(Theme.surface2, in: RoundedRectangle(cornerRadius: 12))
+                        .foregroundStyle(Theme.text)
+                }
+            }
+            .buttonStyle(.plain)
+            Text("«Nuovi numeri» carica una griglia casuale di prova (non è il FILO del giorno).")
+                .font(.caption2).foregroundStyle(Theme.textMuted)
         }
         .padding(16)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))

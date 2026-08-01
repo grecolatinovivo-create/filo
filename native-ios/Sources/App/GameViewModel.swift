@@ -395,6 +395,44 @@ final class GameViewModel: ObservableObject {
         showNuovoGiornoBanner = false
     }
 
+    // MARK: Strumenti TESTER/ADMIN (fuori dalle regole normali)
+
+    /// Azzera la partita di OGGI: rimette i 3 fili, il filo corrente e lo stato
+    /// come a inizio giornata, cancellando il salvataggio del giorno. Non tocca
+    /// le statistiche storiche. Solo per test.
+    func testerAzzera() {
+        engine = GameEngine(puzzle: puzzle)
+        stelleOggi = 0
+        sartoBattutoOggi = false
+        revealSarto = false
+        esitoVisuale = nil
+        lockInput = false
+        risultatoMostrato = false
+        shakes = [:]
+        casellaNonValida = nil
+        toast = nil
+        scheda = nil
+        defaults.removeObject(forKey: "filo.today")
+    }
+
+    /// Carica una griglia CASUALE (numeri diversi) per provare, senza intaccare
+    /// il puzzle del giorno né le statistiche. Solo per test.
+    func testerNuoviNumeri() {
+        let semeCasuale = Int.random(in: 10_000_000...99_999_999)
+        puzzle = Generator.generate(seed: semeCasuale)
+        engine = GameEngine(puzzle: puzzle)
+        stelleOggi = 0
+        sartoBattutoOggi = false
+        revealSarto = false
+        esitoVisuale = nil
+        lockInput = false
+        risultatoMostrato = false
+        shakes = [:]
+        casellaNonValida = nil
+        toast = nil
+        scheda = nil
+    }
+
     // MARK: Chiusura schede
 
     /// Chiamata alla chiusura del tutorial: vale come visto anche con swipe (RF7).

@@ -57,7 +57,7 @@ struct IntroView: View {
             let s = min(geo.size.width / 200, geo.size.height / 150)
             let ox = (geo.size.width - 200 * s) / 2
             let oy = (geo.size.height - 150 * s) / 2
-            func P(_ p: CGPoint) -> CGPoint { CGPoint(x: ox + p.x * s, y: oy + p.y * s) }
+            let P: (CGPoint) -> CGPoint = { CGPoint(x: ox + $0.x * s, y: oy + $0.y * s) }
             ZStack {
                 ForEach(0..<dots.count, id: \.self) { i in
                     Circle()

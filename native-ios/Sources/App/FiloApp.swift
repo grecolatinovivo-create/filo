@@ -14,7 +14,7 @@ struct FiloApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                RootView()
+                MenuView()
                     .environmentObject(viewModel)
                     .environmentObject(theme)
                     .environmentObject(store)

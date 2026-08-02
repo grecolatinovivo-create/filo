@@ -3,15 +3,19 @@ import Combine
 import FiloCore
 
 /// Schermata principale (GIOCO, wireframe README §13.1) + navigazione a schede.
+/// Presentata dal MenuView in fullScreenCover; `onBack` torna al menu con la
+/// transizione a tessere (fallback: dismiss standard).
 struct RootView: View {
     @EnvironmentObject private var vm: GameViewModel
     @EnvironmentObject private var theme: ThemeManager   // ridisegna al cambio tema
     @EnvironmentObject private var store: Store
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dismiss) private var dismiss
+
+    /// Ritorno al menu orchestrato dal presentatore (tessere + dismiss).
+    var onBack: (() -> Void)? = nil
 
     private let timerGiorno = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
-
-    @State private var showSalita = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -27,7 +31,6 @@ struct RootView: View {
                             .frame(maxWidth: 420)
                         strappaButton
                             .padding(.top, 8)
-                        salitaButton
                         AdSlot(isPro: store.isPro)
                     }
                     .frame(maxWidth: 480)
@@ -51,7 +54,6 @@ struct RootView: View {
             case .profilo: ProfileView()
             }
         }
-        .fullScreenCover(isPresented: $showSalita) { SalitaView() }
         .confirmationDialog("Strappare il filo?",
                             isPresented: $vm.showStrappoDialog,
                             titleVisibility: .visible) {
@@ -64,6 +66,7 @@ struct RootView: View {
             if fase == .active { vm.checkNuovoGiorno() }
         }
         .onReceive(timerGiorno) { _ in vm.checkNuovoGiorno() }
+        .onAppear { vm.onDailyAperto() }
         .preferredColorScheme(.dark)
     }
 
@@ -71,15 +74,27 @@ struct RootView: View {
 
     private var header: some View {
         HStack(spacing: 0) {
-            Button {
-                vm.scheda = .comeSiGioca
-            } label: {
-                Image(systemName: "questionmark.circle")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(Theme.textMuted)
-                    .frame(width: 44, height: 44)
+            HStack(spacing: 0) {
+                Button {
+                    if let onBack { onBack() } else { dismiss() }
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(Theme.textMuted)
+                        .frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Menu")
+
+                Button {
+                    vm.scheda = .comeSiGioca
+                } label: {
+                    Image(systemName: "questionmark.circle")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(Theme.textMuted)
+                        .frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Come si gioca")
             }
-            .accessibilityLabel("Come si gioca")
 
             Spacer()
 
@@ -124,23 +139,6 @@ struct RootView: View {
         Button("Strappa il filo") { vm.richiediStrappo() }
             .buttonStyle(SecondaryButtonStyle(enabled: vm.strappaDisponibile))
             .disabled(!vm.strappaDisponibile)
-    }
-
-    /// Punto d'ingresso non invasivo alla modalità Salita (a livelli, separata
-    /// dal daily). Compatta, sotto la board.
-    private var salitaButton: some View {
-        Button {
-            showSalita = true
-        } label: {
-            Label("Salita", systemImage: "figure.climbing")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Theme.textMuted)
-                .padding(.vertical, 8)
-                .padding(.horizontal, 16)
-                .overlay(Capsule().strokeBorder(Theme.border, lineWidth: 1))
-        }
-        .padding(.top, 4)
-        .accessibilityHint("Modalità a livelli separata dal gioco del giorno")
     }
 
     // MARK: Banner nuovo giorno (RF10)

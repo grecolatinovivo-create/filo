@@ -75,20 +75,47 @@ final class GameViewModel: ObservableObject {
         engine = GameEngine(puzzle: daily.puzzle)
         stats = Self.loadStats(from: UserDefaults.standard)
         ripristinaGiornata()
+        // La home ora è il MENU: qui non si presenta più nessuna scheda.
+        // La catena primo avvio (tutorial → onboarding progressivo) e il
+        // modal risultato a giorno concluso partono in onDailyAperto(),
+        // quando l'utente apre il daily.
         if !defaults.bool(forKey: "filo.onboarded") {
             primoAvvio = true
-            scheda = .comeSiGioca
-        } else {
+        } else if !defaults.bool(forKey: progressiveKey) {
             // Retro-compat: chi ha già l'onboarding classico NON deve vedere
             // l'onboarding progressivo (lo consideriamo già fatto).
-            if !defaults.bool(forKey: progressiveKey) {
-                defaults.set(true, forKey: progressiveKey)
-            }
-            if engine.gameOver {
-                revealSarto = true
-                risultatoMostrato = true
-                scheda = .risultato        // RF9: giorno concluso → risultato
-            }
+            defaults.set(true, forKey: progressiveKey)
+        }
+        if engine.gameOver {
+            revealSarto = true             // la board mostra subito il Sarto
+        }
+    }
+
+    /// Chiamata all'apertura del daily (onAppear di RootView): applica la
+    /// stessa logica che prima viveva nell'init — primo avvio → tutorial;
+    /// giorno concluso e risultato mai mostrato → modal risultato (RF9).
+    /// Idempotente: alle aperture successive non ripresenta nulla.
+    func onDailyAperto() {
+        if !defaults.bool(forKey: "filo.onboarded") {
+            primoAvvio = true
+            presentaSchedaAppenaPossibile(.comeSiGioca)
+            return
+        }
+        if engine.gameOver && !risultatoMostrato {
+            revealSarto = true
+            risultatoMostrato = true
+            presentaSchedaAppenaPossibile(.risultato)
+        }
+    }
+
+    /// Presenta una scheda con un piccolo differimento: il daily è appena
+    /// stato presentato in fullScreenCover (sotto le tessere della
+    /// transizione) e una sheet immediata potrebbe scontrarsi con la
+    /// presentazione in corso.
+    private func presentaSchedaAppenaPossibile(_ s: Scheda) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            if scheda == nil { scheda = s }
         }
     }
 

@@ -140,6 +140,14 @@ struct SalitaView: View {
     @StateObject private var vm = SalitaViewModel()
     @Environment(\.dismiss) private var dismiss
 
+    /// Ritorno al menu orchestrato dal presentatore (transizione a tessere).
+    /// Se assente, chiusura standard con dismiss.
+    var onClose: (() -> Void)? = nil
+
+    private func chiudi() {
+        if let onClose { onClose() } else { dismiss() }
+    }
+
     var body: some View {
         ZStack(alignment: .top) {
             Theme.bgGradient.ignoresSafeArea()
@@ -178,7 +186,7 @@ struct SalitaView: View {
     private var header: some View {
         HStack {
             Button {
-                dismiss()
+                chiudi()
             } label: {
                 Image(systemName: "xmark")
                     .font(.title3.weight(.semibold))
@@ -265,7 +273,7 @@ struct SalitaView: View {
                 Button("Riprova") { vm.riprova() }
                     .buttonStyle(PrimaryButtonStyle())
                     .padding(.top, 4)
-                Button("Chiudi") { dismiss() }
+                Button("Chiudi") { chiudi() }
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.textMuted)
             }

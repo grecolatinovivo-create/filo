@@ -29,6 +29,9 @@ final class PracticeSession: ObservableObject {
     func gioca(_ idx: Int, viaTap: Bool) -> Mossa {
         guard !lockInput, !engine.gameOver else { return .ignorata }
         let m = engine.gioca(idx)
+        if m == .iniziato || m == .esteso || m == .vittoria {
+            SoundManager.shared.plin(passo: engine.filo.count)
+        }
         if viaTap && (m == .giaUsata || m == .nonAdiacente) { shake(idx) }
         return m
     }

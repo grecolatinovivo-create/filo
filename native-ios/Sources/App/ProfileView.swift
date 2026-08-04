@@ -12,6 +12,8 @@ struct ProfileView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var mostraArchivio = false
+    // Stesso storage letto da SoundManager ("filo.suoni"): il toggle è immediato.
+    @AppStorage(SoundManager.defaultsKey) private var suoniAttivi = true
 
     private var mostraStrumentiAdmin: Bool { store.isSandbox || account.isAdmin }
 
@@ -24,6 +26,7 @@ struct ProfileView: View {
                     if AppConfig.appleSignInEnabled { accessoSezione } else { gratisSezione }
                     if mostraStrumentiAdmin { testerSezione }
                     temiSezione
+                    suoniSezione
                     archivioSezione
                     infoSezione
                 }
@@ -234,6 +237,22 @@ struct ProfileView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(selezionato ? String(localized: "\(t.nome), selezionato") : t.nome)
+    }
+
+    // MARK: Suoni
+
+    private var suoniSezione: some View {
+        Toggle(isOn: $suoniAttivi) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Suoni").font(.body.weight(.semibold)).foregroundStyle(Theme.text)
+                Text("Un plin per ogni casella del filo.")
+                    .font(.caption).foregroundStyle(Theme.textMuted)
+            }
+        }
+        .tint(Theme.filo)
+        .padding(16)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.border, lineWidth: 1))
     }
 
     // MARK: Archivio

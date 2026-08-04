@@ -262,10 +262,13 @@ final class GameViewModel: ObservableObject {
         let mossa = engine.gioca(idx)
         switch mossa {
         case .iniziato:
+            SoundManager.shared.plin(passo: engine.filo.count)
             annuncia(String(localized: "Filo iniziato. Somma \(engine.somma) su \(puzzle.T)."))
         case .esteso:
+            SoundManager.shared.plin(passo: engine.filo.count)
             annuncia(String(localized: "Più \(puzzle.valori[idx]). Somma \(engine.somma) su \(puzzle.T), \(engine.filo.count) caselle."))
         case .vittoria:
+            SoundManager.shared.plin(passo: engine.filo.count)
             gestisciVittoria()
         case .spezzato:
             gestisciFiloPerso(.spezzato, percorso: filoPrima + [idx])

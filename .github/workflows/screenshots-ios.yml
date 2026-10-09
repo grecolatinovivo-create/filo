@@ -1,0 +1,287 @@
+name: Screenshot App Store (iOS)
+
+# Screenshot REALI dell'app dal simulatore (XCUITest FILOUITests/ScreenshotTests),
+# in italiano e in inglese, a 6,9" (iPhone 17 Pro Max / 16 Pro Max: 1320×2868).
+# Risultato: artifact del run + branch orfano "appstore-screenshots"
+# (it/*.png, en/*.png) scaricabile da raw.githubusercontent.com.
+# Solo manuale: non parte mai da solo.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: screenshots-ios
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  screenshots:
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      BUNDLE_ID: com.grecolatinovivo.filo
+      SHOTS: ${{ github.workspace }}/screenshots-out
+      DERIVED: ${{ github.workspace }}/DerivedData-shots
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Installa XcodeGen
+        run: brew install xcodegen
+
+      - name: Genera il progetto Xcode
+        working-directory: native-ios
+        run: xcodegen generate
+
+      - name: Scegli (o crea) un simulatore iPhone 6,9"
+        id: sim
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, re, subprocess, sys
+
+          def simctl(*args):
+              return json.loads(subprocess.check_output(["xcrun", "simctl", "list", *args, "-j"]))
+
+          PREF = ["iPhone 17 Pro Max", "iPhone 16 Pro Max"]
+
+          def ver_runtime(identifier):
+              m = re.search(r"iOS-(\d+)-(\d+)(?:-(\d+))?$", identifier)
+              return tuple(int(x or 0) for x in m.groups()) if m else None
+
+          cands = []
+          for rt, devs in simctl("devices", "available")["devices"].items():
+              v = ver_runtime(rt)
+              if not v:
+                  continue
+              for d in devs:
+                  if d.get("isAvailable", True) and d["name"] in PREF:
+                      cands.append((PREF.index(d["name"]), tuple(-x for x in v), d["udid"], d["name"], rt))
+
+          if cands:
+              cands.sort()
+              _, _, udid, name, rt = cands[0]
+              print(f"Simulatore esistente: {name} ({rt}) {udid}", file=sys.stderr)
+          else:
+              runtimes = [r for r in simctl("runtimes", "available")["runtimes"]
+                          if r.get("platform", "iOS") == "iOS" and r.get("isAvailable", True)]
+              runtimes.sort(key=lambda r: tuple(int(x) for x in r["version"].split(".")), reverse=True)
+              tipi = {t["name"]: t["identifier"] for t in simctl("devicetypes")["devicetypes"]}
+              scelta = None
+              for r in runtimes:
+                  supportati = {t["name"] for t in r.get("supportedDeviceTypes", [])}
+                  for name in PREF:
+                      if name in tipi and (not supportati or name in supportati):
+                          scelta = (name, r)
+                          break
+                  if scelta:
+                      break
+              if not scelta:
+                  sys.exit("Nessun runtime iOS con iPhone 17/16 Pro Max disponibile")
+              name, r = scelta
+              udid = subprocess.check_output(
+                  ["xcrun", "simctl", "create", f"{name} (screenshots)", tipi[name], r["identifier"]]
+              ).decode().strip()
+              print(f"Simulatore creato: {name} (iOS {r['version']}) {udid}", file=sys.stderr)
+
+          print(f"udid={udid}")
+          print(f"name={name}")
+          PY
+          cat "$GITHUB_OUTPUT"
+
+      - name: Avvia il simulatore
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl ui "$UDID" appearance dark || true
+
+      - name: Compila app + UI test (una volta sola)
+        working-directory: native-ios
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          set +e
+          xcodebuild build-for-testing \
+            -project FILO.xcodeproj \
+            -scheme FILOScreenshots \
+            -configuration Debug \
+            -destination "id=$UDID" \
+            -derivedDataPath "$DERIVED" \
+            CODE_SIGNING_ALLOWED=NO \
+            > /tmp/build-for-testing.log 2>&1
+          CODE=$?
+          set -e
+          grep -E "error:|\*\* (TEST )?BUILD" /tmp/build-for-testing.log | head -80 || true
+          if [ "$CODE" -ne 0 ]; then tail -60 /tmp/build-for-testing.log; fi
+          exit "$CODE"
+
+      - name: Screenshot (italiano e inglese)
+        working-directory: native-ios
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          mkdir -p "$SHOTS"
+          FALLITI=""
+          for LINGUA in it en; do
+            echo "════ Lingua: $LINGUA ════"
+            # Installazione pulita: niente onboarding già visto né partita salvata.
+            xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
+            xcrun simctl uninstall "$UDID" "$BUNDLE_ID" || true
+            # Status bar "da vetrina": 9:41, batteria piena, segnale pieno.
+            xcrun simctl status_bar "$UDID" clear || true
+            xcrun simctl status_bar "$UDID" override \
+              --time "9:41" \
+              --dataNetwork wifi --wifiMode active --wifiBars 3 \
+              --cellularMode active --cellularBars 4 --operatorName "" \
+              --batteryState charged --batteryLevel 100 \
+              || echo "::warning::status bar override non applicato"
+            rm -rf "$RUNNER_TEMP/xcresult-$LINGUA.xcresult"
+            set +e
+            TEST_RUNNER_SCREENSHOT_DIR="$SHOTS" \
+            TEST_RUNNER_FILO_LANG="$LINGUA" \
+            xcodebuild test-without-building \
+              -project FILO.xcodeproj \
+              -scheme FILOScreenshots \
+              -destination "id=$UDID" \
+              -derivedDataPath "$DERIVED" \
+              -only-testing:FILOUITests/ScreenshotTests \
+              -parallel-testing-enabled NO \
+              -test-timeouts-enabled YES \
+              -default-test-execution-time-allowance 900 \
+              -maximum-test-execution-time-allowance 1200 \
+              -resultBundlePath "$RUNNER_TEMP/xcresult-$LINGUA.xcresult" \
+              > "/tmp/test-$LINGUA.log" 2>&1
+            ESITO=$?
+            set -e
+            grep -E "Test Case|error:|failed|passed|\*\* TEST" "/tmp/test-$LINGUA.log" | tail -60 || true
+            if [ "$ESITO" -ne 0 ]; then
+              echo "::warning::Test screenshot ($LINGUA) terminato con codice $ESITO"
+              FALLITI="$FALLITI $LINGUA"
+            fi
+          done
+          echo "FALLITI=$FALLITI" >> "$GITHUB_ENV"
+
+      - name: Recupera le PNG dall'xcresult se mancano su disco
+        run: |
+          for LINGUA in it en; do
+            if ls "$SHOTS/$LINGUA"/*.png >/dev/null 2>&1; then
+              echo "$LINGUA: PNG già su disco"
+              continue
+            fi
+            XR="$RUNNER_TEMP/xcresult-$LINGUA.xcresult"
+            [ -d "$XR" ] || { echo "::warning::$LINGUA: nessun xcresult"; continue; }
+            OUT="$RUNNER_TEMP/attachments-$LINGUA"
+            rm -rf "$OUT"; mkdir -p "$OUT"
+            xcrun xcresulttool export attachments --path "$XR" --output-path "$OUT"
+            python3 - "$OUT" "$SHOTS" "$LINGUA" <<'PY'
+          import json, os, re, shutil, sys
+          out, shots, lingua = sys.argv[1:4]
+          manifest = json.load(open(os.path.join(out, "manifest.json")))
+          dest = os.path.join(shots, lingua)
+          os.makedirs(dest, exist_ok=True)
+          n = 0
+          for test in manifest:
+              for a in test.get("attachments", []):
+                  nome = a.get("suggestedHumanReadableName", "")
+                  file = a.get("exportedFileName", "")
+                  if not (nome.lower().endswith(".png") or file.lower().endswith(".png")):
+                      continue
+                  base = os.path.splitext(nome)[0]
+                  if not base.startswith(lingua + "_"):
+                      continue
+                  # "it_07_come_si_gioca_0_<UUID>" -> "07_come_si_gioca"
+                  pezzi = base[len(lingua) + 1:].split("_")
+                  if not (pezzi and re.fullmatch(r"\d\d", pezzi[0])):
+                      continue
+                  tenuti = [pezzi[0]]
+                  for p in pezzi[1:]:
+                      if not re.fullmatch(r"[a-z]+", p):
+                          break
+                      tenuti.append(p)
+                  shutil.copy(os.path.join(out, file), os.path.join(dest, "_".join(tenuti) + ".png"))
+                  n += 1
+          print(f"{lingua}: {n} PNG estratte dall'xcresult")
+          PY
+          done
+
+      - name: Verifica numero e dimensioni (App Store 6,9" / 6,7")
+        run: |
+          ERR=0
+          for LINGUA in it en; do
+            N=$(ls "$SHOTS/$LINGUA"/*.png 2>/dev/null | wc -l | tr -d ' ')
+            echo "$LINGUA: $N PNG"
+            if [ "$N" -lt 5 ]; then
+              echo "::error::$LINGUA: solo $N screenshot (minimo 5)"
+              ERR=1
+            fi
+            for F in "$SHOTS/$LINGUA"/*.png; do
+              [ -f "$F" ] || continue
+              W=$(sips -g pixelWidth "$F" | awk '/pixelWidth/{print $2}')
+              H=$(sips -g pixelHeight "$F" | awk '/pixelHeight/{print $2}')
+              echo "  $(basename "$F"): ${W}x${H}"
+              case "${W}x${H}" in
+                1320x2868|1290x2796) ;;
+                *) echo "::error::$F ha dimensioni ${W}x${H} (attese 1320x2868 o 1290x2796)"; ERR=1 ;;
+              esac
+            done
+          done
+          if [ -n "${FALLITI// /}" ]; then
+            echo "::error::Test falliti per:$FALLITI (vedi l'artifact xcresult)"
+            ERR=1
+          fi
+          exit $ERR
+
+      - name: Carica le PNG come artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: appstore-screenshots-${{ github.run_number }}
+          path: ${{ env.SHOTS }}
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Carica gli xcresult (diagnostica)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcresult-screenshots-${{ github.run_number }}
+          path: ${{ runner.temp }}/xcresult-*.xcresult
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Pubblica sul branch orfano appstore-screenshots
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SIM_NAME: ${{ steps.sim.outputs.name }}
+        run: |
+          PUB="$RUNNER_TEMP/publish"
+          rm -rf "$PUB"; mkdir -p "$PUB"
+          cp -R "$SHOTS/it" "$SHOTS/en" "$PUB/"
+          cd "$PUB"
+          RAW="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/appstore-screenshots"
+          {
+            echo "# FILO — screenshot App Store"
+            echo
+            echo "Generati da \`screenshots-ios.yml\` (run #${GITHUB_RUN_NUMBER}, commit ${GITHUB_SHA::7}) su ${SIM_NAME}."
+            echo "Branch orfano rigenerato a ogni run: non modificarlo a mano."
+            for LINGUA in it en; do
+              echo
+              echo "## $LINGUA"
+              for F in "$LINGUA"/*.png; do echo "- $RAW/$F"; done
+            done
+          } > README.md
+          git init -q -b appstore-screenshots
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Screenshot App Store — run #${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7})"
+          git push --force -q "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:appstore-screenshots
+          {
+            echo "### Screenshot pubblicati su \`appstore-screenshots\`"
+            echo
+            for LINGUA in it en; do
+              for F in "$LINGUA"/*.png; do echo "- $RAW/$F"; done
+            done
+          } >> "$GITHUB_STEP_SUMMARY"

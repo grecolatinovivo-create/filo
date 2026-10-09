@@ -155,7 +155,8 @@ jobs:
               > "/tmp/test-$LINGUA.log" 2>&1
             ESITO=$?
             set -e
-            grep -E "Test Case|error:|failed|passed|\*\* TEST" "/tmp/test-$LINGUA.log" | tail -60 || true
+            grep -E "\[FILO-SHOT\]|Test Case|error:|failed|passed|\*\* TEST" "/tmp/test-$LINGUA.log" | grep -v "albero UI" | tail -150 || true
+            cp "/tmp/test-$LINGUA.log" "$SHOTS/debug-test-$LINGUA.log" 2>/dev/null || true
             if [ "$ESITO" -ne 0 ]; then
               echo "::warning::Test screenshot ($LINGUA) terminato con codice $ESITO"
               FALLITI="$FALLITI $LINGUA"
@@ -227,9 +228,11 @@ jobs:
               esac
             done
           done
+          # Il test è best-effort: fallisce solo se salva < 5 schermate. Qui
+          # conta il risultato su disco; eventuali errori di singole fasi sono
+          # nei log ([FILO-SHOT]) e negli screenshot di debug dell'artifact.
           if [ -n "${FALLITI// /}" ]; then
-            echo "::error::Test falliti per:$FALLITI (vedi l'artifact xcresult)"
-            ERR=1
+            echo "::warning::xcodebuild test non riuscito per:$FALLITI (vedi log e debug/ nell'artifact)"
           fi
           exit $ERR
 

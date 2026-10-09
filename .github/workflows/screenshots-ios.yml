@@ -117,6 +117,48 @@ jobs:
           if [ "$CODE" -ne 0 ]; then tail -60 /tmp/build-for-testing.log; fi
           exit "$CODE"
 
+      # GATE DI QUALITÀ: primo avvio vero (nessun launch argument di
+      # onboarding) → guida → "Riscaldamento" → UN tocco su "Salta" → daily
+      # interattivo entro 5 s. Se fallisce, il job FALLISCE qui (niente
+      # screenshot né pubblicazione); log e debug/ restano nell'artifact.
+      - name: Gate primo avvio (FirstLaunchTests)
+        working-directory: native-ios
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          mkdir -p "$SHOTS/debug"
+          xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
+          xcrun simctl uninstall "$UDID" "$BUNDLE_ID" || true
+          rm -rf "$RUNNER_TEMP/xcresult-firstlaunch.xcresult"
+          set +e
+          TEST_RUNNER_SCREENSHOT_DIR="$SHOTS" \
+          TEST_RUNNER_FILO_LANG="it" \
+          xcodebuild test-without-building \
+            -project FILO.xcodeproj \
+            -scheme FILOScreenshots \
+            -destination "id=$UDID" \
+            -derivedDataPath "$DERIVED" \
+            -only-testing:FILOUITests/FirstLaunchTests \
+            -parallel-testing-enabled NO \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 300 \
+            -maximum-test-execution-time-allowance 420 \
+            -resultBundlePath "$RUNNER_TEMP/xcresult-firstlaunch.xcresult" \
+            > /tmp/test-firstlaunch.log 2>&1
+          ESITO=$?
+          set -e
+          grep -E "\[FILO-FIRST\]|Test Case|error:|failed|passed|\*\* TEST" /tmp/test-firstlaunch.log | grep -v "albero UI" | tail -120 || true
+          cp /tmp/test-firstlaunch.log "$SHOTS/debug-test-firstlaunch.log" 2>/dev/null || true
+          if [ "$ESITO" -ne 0 ]; then
+            echo "::error::Gate primo avvio FALLITO (codice $ESITO): vedi debug-test-firstlaunch.log e debug/firstlaunch_*.png nell'artifact"
+            tail -60 /tmp/test-firstlaunch.log
+            exit "$ESITO"
+          fi
+          if ! grep -qE "Test Case .*FirstLaunchTests.*passed|Executed [1-9][0-9]* tests?, with 0 failures" /tmp/test-firstlaunch.log; then
+            echo "::error::Gate primo avvio: FirstLaunchTests non eseguito (0 test?)"
+            exit 1
+          fi
+
       - name: Screenshot (italiano e inglese)
         working-directory: native-ios
         env:

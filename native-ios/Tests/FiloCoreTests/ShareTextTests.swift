@@ -111,4 +111,16 @@ final class ShareTextTests: XCTestCase {
         XCTAssertEqual(out.components(separatedBy: ShareText.shareURL).count - 1, 1)
         XCTAssertEqual(out.split(separator: "\n").count, 4)  // titolo + filo + streak + URL
     }
+
+    func testShareURLPuntaAlSitoVero() {
+        // Parità con gioca.html CONFIG.SHARE_URL. "filo-game.vercel.app" appartiene
+        // a un ALTRO team Vercel (404): non deve mai finire nel testo condiviso.
+        XCTAssertEqual(ShareText.shareURL, "https://filo-game-liard.vercel.app")
+        let fili = [FiloConcluso(esito: .vinto, somma: 97, caselle: 17)]
+        let out = ShareText.build(numero: 217, vinta: true, fili: fili, T: 97,
+                                  stelle: 3, sartoBattuto: false, streak: 7,
+                                  url: ShareText.shareURL)
+        XCTAssertEqual(out, "FILO #217 🧵\n🟩🟩🟩🟩🟩 17/25 ⭐⭐⭐\n🔥 7 di fila\nhttps://filo-game-liard.vercel.app")
+        XCTAssertFalse(out.contains("https://filo-game.vercel.app"))
+    }
 }

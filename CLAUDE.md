@@ -9,7 +9,12 @@ offline) e iOS nativo SwiftUI (`native-ios/`).
 1. `/home/claude/gioco/README.md` — regole §6, generatore §7, punteggio §8,
    condivisione §9, persistenza §11. (Copia di lavoro: il repo del web.)
 2. `/home/claude/gioco/UX_SPEC.md` — design system, palette, motion, a11y.
-3. `/home/claude/gioco/NEURO_SPEC.md` — microcopy ESATTO (mai riformulare).
+3. `/home/claude/gioco/NEURO_SPEC.md` — microcopy ESATTO (mai riformulare)
+   del client WEB e testo di condivisione (`ShareText.build`, congelato).
+   **iOS (dalla 2.0):** la fonte normativa di microcopy, palette, tipografia,
+   motion e haptics è `/home/claude/redesign/REDESIGN_SPEC.md` (§7 = testi
+   it/en esatti, niente emoji né punti esclamativi); NEURO_SPEC resta valida
+   per il web e per il testo di condivisione.
 4. Il JS di `index.html` (sezioni RNG/GENERATOR/RULES/SHARE) è l'implementazione
    di riferimento del motore.
 
@@ -33,6 +38,16 @@ offline) e iOS nativo SwiftUI (`native-ios/`).
   Mulberry32, Generator, Rules (GameEngine), Scoring, ShareText, FiloDate.
 - `Sources/App/` — SwiftUI (iOS 17+), MAI WebView. Persistenza UserDefaults
   con schema equivalente a §11.2 (`filo.onboarded`, `filo.stats`, `filo.today`).
+- Design system iOS: punto d'ingresso `Sources/App/DesignSystem.swift`
+  (FiloMetrics, FiloFont/`.filoFont`, FiloMotion, FiloHaptics, FiloBackground,
+  stili dei bottoni, FiloIconButton, FiloCard, StatCard, Chip, stelle/medaglia,
+  LivesIndicator, ThreadsLeftIndicator); colori in `Theme.swift`, board in
+  `BoardView.swift` (BoardMetrics + layer filo/numeri). Guida ai componenti:
+  `/home/claude/redesign/notes/COMPONENTS.md`. Le schermate nuove riusano
+  questi componenti invece di ridefinire stili locali.
+- Stringhe: `Sources/App/Localizable.xcstrings` (sorgente `it`, 8 lingue). Le
+  etichette d'accessibilità usate dai test UI (`UITests/`, valori it/en
+  scritti nei test) sono un contratto: se cambiano, aggiornare anche i test.
 - Doppia natura: `Package.swift` (SPM, solo FiloCore + test, per `swift test`
   su Linux) e `project.yml` (XcodeGen: FiloCore framework + app + test).
   I file SwiftUI NON sono nel package SPM.
@@ -60,4 +75,7 @@ offline) e iOS nativo SwiftUI (`native-ios/`).
 2. I file di `Sources/App` devono usare solo API iOS 17 (niente iOS 18+ senza
    fallback); sintassi verificabile con `swiftc -parse`.
 3. YAML dei workflow e `project.yml` validi (`python3 -c "import yaml, ..."`).
-4. Microcopy: confrontare con NEURO_SPEC §2 (testi esatti, plurali normativi).
+4. Microcopy: iOS → REDESIGN_SPEC §7 (testi esatti); web e testo di
+   condivisione → NEURO_SPEC §2 (testi esatti, plurali normativi). Catalogo
+   iOS completo nelle 8 lingue e senza chiavi orfane
+   (`python3 /home/claude/redesign/merge_strings.py` → missing 0, problems 0).

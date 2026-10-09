@@ -66,17 +66,26 @@ final class ScreenshotTests: XCTestCase {
         app = XCUIApplication()
         app.launchArguments += ["-AppleLanguages", "(\(lingua))",
                                 "-AppleLocale", ui.locale]
-        lancio = Date()
-        app.launch()
+        // Stato persistente PRE-IMPOSTATO senza toccare l'app: i launch
+        // argument "-chiave valore" finiscono in NSArgumentDomain, che
+        // UserDefaults.standard consulta PRIMA del dominio dell'app (tutte le
+        // chiavi FILO sono lette da UserDefaults.standard / @AppStorage).
+        //  - filo.onboarded = YES → niente guida "Come si gioca" automatica
+        //    (GameViewModel.init/onDailyAperto usano defaults.bool → "YES" = true)
+        //  - filo.onboardingProgressivoFatto = YES → niente "Riscaldamento"
+        //  - filo.suoni = <false/> → niente audio (SoundManager legge
+        //    `object(forKey:) as? Bool`: serve un booleano plist, non "NO")
+        // L'intro non ha chiavi (@State showIntro): si attende la sua durata.
+        app.launchArguments += Testi.argomentiStato
+        log("launchArguments: \(app.launchArguments)")
+        lancia()
 
         fase("01_home") { try faseHome() }
-        fase("daily") { try faseDaily() }               // 07 (se c'è la guida), 02, 03
+        fase("07_come_si_gioca") { try faseGuidaDalMenu() }
+        fase("daily") { try faseDaily() }               // 02, 03
         fase("04_statistiche") { try faseStatistiche() }
         fase("05_salita") { try faseSalita() }
         fase("06_archivio") { try faseArchivio() }
-        if !salvati.contains("07_come_si_gioca") {
-            fase("07_come_si_gioca") { try faseGuidaDalMenu() }
-        }
 
         log("RIEPILOGO \(lingua): salvate \(salvati.count) schermate \(salvati.sorted())")
         for e in errori { log("  errore registrato: \(e)") }
@@ -103,7 +112,7 @@ final class ScreenshotTests: XCTestCase {
         scatta("01_home")
     }
 
-    /// 07 (guida del primo avvio) → 02 (filo parziale) → 03 (vittoria).
+    /// 02 (filo parziale) → 03 (vittoria) sul FILO del giorno.
     @MainActor
     private func faseDaily() throws {
         try tornaAlMenu()
@@ -113,17 +122,8 @@ final class ScreenshotTests: XCTestCase {
         }
         aspettaToccabile(card, timeout: 10)
         card.tap()
-
-        // Primo avvio: guida "Come si gioca" (0,4 s dopo l'apertura del daily).
-        let gioca = elemento(prefisso: ui.prefissoGioca)
-        if gioca.waitForExistence(timeout: 12) {
-            pausa(2.6)                                   // la demo 3×3 accende qualche casella
-            scatta("07_come_si_gioca")
-        } else {
-            log("guida 'Come si gioca' non comparsa all'apertura del daily")
-        }
-        // Chiude TUTTA la catena del primo avvio (guida → "Riscaldamento"),
-        // che usa una board di pratica con le STESSE etichette delle caselle.
+        // Con i flag pre-impostati non deve comparire alcun onboarding; se
+        // comparisse comunque, chiudiOnboarding() ha un ripiego (rilancio).
         try chiudiOnboarding()
 
         let lettura = try leggiSchermo(minimoCelle: 25)
@@ -229,6 +229,9 @@ final class ScreenshotTests: XCTestCase {
         }
         pausa(2.6)
         scatta("07_come_si_gioca")
+        // Chiusura con la X ("Chiudi"), non con "Gioca il FILO": resta sul menu.
+        _ = tappaSeToccabile(ui.chiudi)
+        pausa(0.8)
     }
 
     // MARK: Navigazione robusta
@@ -253,30 +256,62 @@ final class ScreenshotTests: XCTestCase {
             app.swipeDown()
             pausa(1.0)
         }
-        throw ErroreScreenshot.fase("impossibile tornare al menu")
+        // Ripiego definitivo: rilancio dell'app (stato persistente conservato,
+        // flag di onboarding dai launch argument) → si riparte dal menu.
+        log("tornaAlMenu: nessuna via d'uscita, RILANCIO l'app")
+        lancia()
+        aspettaToccabile(cardSalita, timeout: 30)
+        attendiDalLancio(secondi: 6.5)
+        guard cardSalita.exists && cardSalita.isHittable else {
+            throw ErroreScreenshot.fase("impossibile tornare al menu (anche dopo il rilancio)")
+        }
     }
 
-    /// Chiude guida e "Riscaldamento" finché non resta il daily (HUD con la
-    /// Somma del Giorno) senza fogli sopra.
+    /// (Ri)lancia l'app con gli stessi argomenti.
+    @MainActor
+    private func lancia() {
+        lancio = Date()
+        app.launch()
+    }
+
+    /// Garantisce di essere sul daily (HUD "Somma del giorno") SENZA fogli di
+    /// onboarding sopra. Normalmente non c'è nulla da chiudere (flag via launch
+    /// argument). Ripiego: UN tentativo con "Gioca il FILO"/"Salta"; se il
+    /// foglio resta, si rilancia l'app (i flag ora sono anche salvati) e si
+    /// riapre il daily dal menu.
     @MainActor
     private func chiudiOnboarding() throws {
-        let scadenza = Date().addingTimeInterval(30)
-        while Date() < scadenza {
-            if tappaSeToccabile(prefisso: ui.prefissoGioca) { log("onboarding: tap 'Gioca il FILO'"); pausa(1.2); continue }
-            if tappaSeToccabile(ui.salta) { log("onboarding: tap 'Salta'"); pausa(1.2); continue }
-            if elemento(senzaMaiuscole: ui.riscaldamento).exists {
-                log("onboarding: 'Riscaldamento' ancora presente, swipe giù")
-                app.swipeDown()
-                pausa(1.0)
-                continue
-            }
-            if elemento(prefisso: ui.prefissoSommaGiorno).exists && !elemento(ui.salta).exists {
-                pausa(0.8)
-                return
-            }
-            pausa(0.5)
+        func dailyLibero() -> Bool {
+            elemento(prefisso: ui.prefissoSommaGiorno).exists
+                && !elemento(ui.salta).exists
+                && !elemento(prefisso: ui.prefissoGioca).exists
+                && !elemento(senzaMaiuscole: ui.riscaldamento).exists
         }
-        throw ErroreScreenshot.fase("onboarding non chiuso o daily non visibile")
+        let hud = elemento(prefisso: ui.prefissoSommaGiorno)
+        _ = hud.waitForExistence(timeout: 10)
+        pausa(1.0)                                       // eventuale scheda differita di 0,4 s
+        if dailyLibero() { return }
+
+        log("onboarding inatteso: guida=\(elemento(prefisso: ui.prefissoGioca).exists) riscaldamento=\(elemento(senzaMaiuscole: ui.riscaldamento).exists)")
+        scattaDebug("onboarding_inatteso")
+        if tappaSeToccabile(prefisso: ui.prefissoGioca) { log("onboarding: tap 'Gioca il FILO'"); pausa(1.5) }
+        if tappaSeToccabile(ui.salta) { log("onboarding: tap 'Salta' (una volta)"); pausa(1.5) }
+        if dailyLibero() { return }
+
+        log("onboarding ancora presente: RILANCIO l'app e riapro il daily")
+        lancia()
+        let card = elemento(ui.cardDaily)
+        guard card.waitForExistence(timeout: 30) else {
+            throw ErroreScreenshot.fase("dopo il rilancio la card del daily non c'è")
+        }
+        aspettaToccabile(card, timeout: 20)
+        attendiDalLancio(secondi: 6.5)
+        card.tap()
+        _ = hud.waitForExistence(timeout: 10)
+        pausa(1.0)
+        guard dailyLibero() else {
+            throw ErroreScreenshot.fase("onboarding presente anche dopo il rilancio")
+        }
     }
 
     /// Legge e risolve una board della Salita. `completo`: tocca tutto il
@@ -557,6 +592,13 @@ private struct Testi {
     private var it: Bool { lingua == "it" }
 
     var locale: String { it ? "it_IT" : "en_US" }
+
+    /// Launch argument per NSArgumentDomain (chiavi lette da UserDefaults.standard).
+    static let argomentiStato: [String] = [
+        "-filo.onboarded", "YES",
+        "-filo.onboardingProgressivoFatto", "YES",
+        "-filo.suoni", "<false/>",
+    ]
 
     // MenuView
     var cardDaily: String { it ? "FILO del giorno, disponibile" : "Daily FILO, available" }

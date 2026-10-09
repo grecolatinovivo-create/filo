@@ -90,12 +90,13 @@ struct BoardMetrics {
     }
 }
 
-/// Nodi del filo (ROUND2 #2), disegnati nel layer del filo (SOTTO i numeri,
-/// al centro della cella: le cifre a contorno restano leggibili).
-/// Partenza: cerchio vuoto 12 pt, contorno oro 2 pt (interno del colore
-/// della tessera selezionata, così il filo non lo attraversa).
-/// Estremo corrente: punto oro pieno 10 pt (`contrazione` lo riduce,
-/// vicolo cieco: 3). Le misure scalano solo su tessere < 60 pt.
+/// Nodi del filo (ROUND3 #3): ANELLI attorno alla cifra, disegnati nel
+/// layer del filo (sopra la linea del filo, sotto i numeri), diametro
+/// lato × 0,62 (≈ 45 pt sulla tessera da 72).
+/// Partenza: anello oro 1,5 pt, senza riempimento.
+/// Estremo corrente: anello oro 2,5 pt + riempimento oro @ 0,14; quando si
+/// sposta si assesta con `FiloMotion.node` (spring 0,24/0,78, lo applica il
+/// layer). `contrazione` (vicolo cieco: 3) riduce il raggio.
 struct FiloNodo: View {
     enum Tipo { case partenza, estremo }
     let tipo: Tipo
@@ -111,35 +112,36 @@ struct FiloNodo: View {
         self.contrazione = contrazione
     }
 
-    private var scala: CGFloat { min(1, max(0.7, side / 60)) }
+    /// Diametro degli anelli: lato × 0,62.
+    static func diametro(_ side: CGFloat) -> CGFloat { side * 0.62 }
 
     var body: some View {
-        switch tipo {
-        case .partenza:
-            let d = 12 * scala
-            ZStack {
-                Circle().fill(Theme.cellSelected)
-                Circle().strokeBorder(colore, lineWidth: 2)
+        let d = max(8, Self.diametro(side) - contrazione * 2)
+        Group {
+            switch tipo {
+            case .partenza:
+                Circle()
+                    .strokeBorder(colore, lineWidth: 1.5)
+            case .estremo:
+                ZStack {
+                    Circle().fill(colore.opacity(0.14))
+                    Circle().strokeBorder(colore, lineWidth: 2.5)
+                }
             }
-            .frame(width: d, height: d)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-        case .estremo:
-            let d = max(4, 10 * scala - contrazione)
-            Circle()
-                .fill(colore)
-                .frame(width: d, height: d)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
         }
+        .frame(width: d, height: d)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 
 /// Layer FILO della board (sopra le tessere, sotto i numeri): percorso del
 /// Sarto tratteggiato 2 pt (sotto), filo d'esito in dissolvenza, filo
-/// corrente come UN solo tracciato continuo centro-centro che si cuce da sé
-/// (solo il segmento nuovo si anima, 0,12 s easeOut), nodo di partenza e
-/// nodo estremo (spring 0,24/0,78). Inerte e nascosto all'accessibilità.
+/// corrente come UN solo tracciato continuo centro-centro (spessore
+/// `Arte.spessoreFilo(side)`) che si cuce da sé (solo il segmento nuovo si
+/// anima, 0,12 s easeOut), anello di partenza (da 2 caselle) e anello
+/// estremo (da 1 casella; spring 0,24/0,78 quando si sposta). Inerte e
+/// nascosto all'accessibilità.
 /// `trim` è mantenuto per compatibilità ma ignorato: l'animazione del
 /// segmento è interna (`CordaProgressiva`), così nessun chiamante può
 /// rianimare i segmenti già tracciati.
@@ -185,22 +187,23 @@ struct BoardThreadLayer: View {
             }
             // filo corrente: un solo Path, sempre presente (anche vuoto) così
             // lo stato dell'animazione del segmento resta stabile
-            CordaProgressiva(punti: filo.map(c))
-            if let primo = filo.first {
+            CordaProgressiva(punti: filo.map(c), lato: side)
+            // con una sola casella si vede solo l'anello estremo
+            if filo.count >= 2, let primo = filo.first {
                 FiloNodo(tipo: .partenza, side: side)
                     .position(c(primo))
             }
             ZStack(alignment: .topLeading) {
-                if filo.count >= 2, let ultimo = filo.last {
+                if let ultimo = filo.last {
                     FiloNodo(tipo: .estremo, side: side)
                         .scaleEffect(endScale)
                         .position(c(ultimo))
                         .transition(reduceMotion ? AnyTransition.opacity
-                                    : AnyTransition.scale(scale: 0.4).combined(with: .opacity))
+                                    : AnyTransition.scale(scale: 0.6).combined(with: .opacity))
                 }
             }
             .animation(reduceMotion ? FiloMotion.reduced : FiloMotion.node,
-                       value: filo.count >= 2 ? (filo.last ?? -1) : -1)
+                       value: filo.last ?? -1)
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
@@ -255,19 +258,19 @@ struct EsitoFiloOverlay: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             if corpo.count >= 2 {
-                CordaOro(punti: corpo)
+                CordaOro(punti: corpo, lato: side)
             }
             if esito == .spezzato, punti.count >= 2 {
                 SegmentoAllentato(da: punti[punti.count - 2], a: punti[punti.count - 1],
                                   freccia: side * 0.3, allentamento: allentamento)
                     .stroke(Theme.spezzato,
-                            style: StrokeStyle(lineWidth: 4.5, lineCap: .round, lineJoin: .round))
+                            style: StrokeStyle(lineWidth: Arte.spessoreFilo(side), lineCap: .round, lineJoin: .round))
                     .opacity(codaOpacita)
             }
-            if let primo = corpo.first {
+            if corpo.count >= 2, let primo = corpo.first {
                 FiloNodo(tipo: .partenza, side: side).position(primo)
             }
-            if corpo.count >= 2, let ultimo = corpo.last {
+            if let ultimo = corpo.last {
                 FiloNodo(tipo: .estremo, side: side,
                          colore: esito == .annodato ? Theme.annodato : Theme.filo,
                          contrazione: contrazione)

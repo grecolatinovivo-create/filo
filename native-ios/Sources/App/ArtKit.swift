@@ -32,6 +32,13 @@ enum Arte {
     static let testoSuVelluto = Color(hexRGB: 0xF5F3ED)
     static let testoSuOro = Color(hexRGB: 0x182235)
 
+    /// Spessore del filo in funzione della tessera (ROUND3 #1):
+    /// lato × 0,075, limitato a 4,5…6 pt (≈ 5,4 sulla tessera da 72).
+    static func spessoreFilo(_ lato: CGFloat) -> CGFloat { min(6, max(4.5, lato * 0.075)) }
+    /// Larghezza dell'alone delle cifre (ROUND3 #2): lato × 0,045,
+    /// limitata a 2,5…3,5 pt (≈ 3,2 sulla tessera da 72).
+    static func aloneCifra(_ lato: CGFloat) -> CGFloat { min(3.5, max(2.5, lato * 0.045)) }
+
     /// Oro pieno (niente gradiente "slot machine").
     static var oroGradient: LinearGradient {
         LinearGradient(colors: [oro, oro], startPoint: .top, endPoint: .bottom)
@@ -75,9 +82,12 @@ struct TesseraArte: View {
     }
 }
 
-/// Il filo (spec §5, ROUND2 #1): UN solo tracciato continuo centro-centro,
-/// oro 4,5 pt, riflesso interno 1 pt goldHighlight @ 0,55, cap/join
-/// arrotondati, ombra nera 15 % r2 y1. Sta SOPRA le tessere e SOTTO i numeri.
+/// Il filo (spec §5, ROUND2 #1, ROUND3 #1): UN solo tracciato continuo
+/// centro-centro, oro, riflesso interno 1 pt goldHighlight @ 0,55, cap/join
+/// arrotondati, ombra nera 15 % r2 y1. Sta SOPRA le tessere e SOTTO i numeri
+/// (che hanno un alone del colore della tessera: il filo passa SOTTO le cifre).
+/// Spessore: se è dato `lato` (lato tessera) = `Arte.spessoreFilo(lato)`
+/// (lato × 0,075, 4,5…6 pt), altrimenti `spessore` (default 4,5).
 /// Due modi di disegno:
 /// - `trim` (storico): taglio del tracciato intero (0…1);
 /// - `progresso` (consigliato): numero di segmenti disegnati (es. `2.4` =
@@ -91,15 +101,19 @@ struct CordaOro: View {
     var spessore: CGFloat = 4.5
     var colore: Color = Arte.oro
     var progresso: CGFloat? = nil
+    var lato: CGFloat? = nil
 
     init(punti: [CGPoint], trim: CGFloat = 1, spessore: CGFloat = 4.5,
-         colore: Color = Arte.oro, progresso: CGFloat? = nil) {
+         colore: Color = Arte.oro, progresso: CGFloat? = nil, lato: CGFloat? = nil) {
         self.punti = punti
         self.trim = trim
         self.spessore = spessore
         self.colore = colore
         self.progresso = progresso
+        self.lato = lato
     }
+
+    private var larghezza: CGFloat { lato.map(Arte.spessoreFilo) ?? spessore }
 
     var body: some View {
         Group {
@@ -116,10 +130,10 @@ struct CordaOro: View {
     private func tratto<S: Shape>(_ forma: S) -> some View {
         ZStack {
             forma
-                .stroke(colore, style: stile(spessore))
+                .stroke(colore, style: stile(larghezza))
                 .shadow(color: Arte.oroOmbra.opacity(0.15), radius: 2, y: 1)
             forma
-                .stroke(Arte.oroAnima.opacity(0.55), style: stile(max(1, spessore * 0.22)))
+                .stroke(Arte.oroAnima.opacity(0.55), style: stile(1))
         }
     }
 
@@ -169,12 +183,15 @@ struct CordaProgressiva: View {
     var spessore: CGFloat = 4.5
     var colore: Color = Arte.oro
     var animazione: Animation = FiloMotion.segment
+    /// Lato tessera: se dato, spessore = `Arte.spessoreFilo(lato)`.
+    var lato: CGFloat? = nil
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var progresso: CGFloat = 0
 
     init(punti: [CGPoint], spessore: CGFloat = 4.5, colore: Color = Arte.oro,
-         animazione: Animation = FiloMotion.segment) {
+         animazione: Animation = FiloMotion.segment, lato: CGFloat? = nil) {
         self.punti = punti
+        self.lato = lato
         self.spessore = spessore
         self.colore = colore
         self.animazione = animazione
@@ -183,7 +200,7 @@ struct CordaProgressiva: View {
     }
 
     var body: some View {
-        CordaOro(punti: punti, spessore: spessore, colore: colore, progresso: progresso)
+        CordaOro(punti: punti, spessore: spessore, colore: colore, progresso: progresso, lato: lato)
             .onChange(of: punti.count) { vecchio, nuovo in
                 let obiettivo = CGFloat(max(0, nuovo - 1))
                 if nuovo > vecchio, nuovo >= 2, !reduceMotion {
@@ -237,14 +254,19 @@ struct IconaArte: View {
     }
 }
 
-/// Numero di una casella (layer SOPRA il filo, ROUND2 #1). SF Rounded
-/// medium (lato × 0,42, 20…30 pt; 28 sulla tessera da 72), #F5F3ED, con un
-/// contorno stretto attorno ai soli glifi: 1,5 pt `Theme.tileNumberOutline`
-/// (#2F4056), ottenuto con 8 copie spostate. NESSUN disco/maschera dietro:
-/// il filo resta continuo e le cifre leggibili sopra di esso.
+/// Numero di una casella (layer SOPRA il filo, ROUND2 #1, ROUND3 #2).
+/// SF Rounded medium (lato × 0,42, 20…30 pt; 28 sulla tessera da 72),
+/// #F5F3ED, con un ALONE attorno ai soli glifi del colore della tessera
+/// sottostante (`cellSelected` #2F4056 se accesa, `cell` #1D2B42 a riposo),
+/// largo lato × 0,045 (2,5…3,5 pt): il filo passa visibilmente SOTTO ogni
+/// cifra, con un varco che segue la forma del glifo (nessun disco).
+/// Tecnica: 16 copie spostate sul cerchio di raggio = alone + 8 a metà
+/// raggio (alone pieno e rotondo), appiattite con `drawingGroup`.
 /// Riempie il frame proposto (il chiamante lo dimensiona `lato × lato`).
 /// `font` e `maschera` sono mantenuti per compatibilità ma ignorati.
-/// `contorno: nil` = cifre senza contorno.
+/// `contorno`: colore esplicito dell'alone (nil = colore della tessera);
+/// `spessoreContorno`: larghezza esplicita (nil = automatica);
+/// `alone: false` = cifre senza alone.
 struct NumeroCella: View {
     let valore: Int
     let accesa: Bool
@@ -252,12 +274,13 @@ struct NumeroCella: View {
     /// Colore del numero su tessera a riposo (default textPrimary).
     var coloreSpento: Color? = nil
     var maschera: Bool = true
-    var contorno: Color? = Theme.tileNumberOutline
-    var spessoreContorno: CGFloat = 1.5
+    var contorno: Color? = nil
+    var spessoreContorno: CGFloat? = nil
+    var alone: Bool = true
 
     init(valore: Int, accesa: Bool, font: Font? = nil, coloreSpento: Color? = nil,
-         maschera: Bool = true, contorno: Color? = Theme.tileNumberOutline,
-         spessoreContorno: CGFloat = 1.5) {
+         maschera: Bool = true, contorno: Color? = nil,
+         spessoreContorno: CGFloat? = nil, alone: Bool = true) {
         self.valore = valore
         self.accesa = accesa
         self.font = font
@@ -265,28 +288,40 @@ struct NumeroCella: View {
         self.maschera = maschera
         self.contorno = contorno
         self.spessoreContorno = spessoreContorno
+        self.alone = alone
     }
 
-    /// 8 direzioni unitarie (assi + diagonali) per il contorno.
+    /// Offset unitari dell'alone: 16 sul cerchio + 8 a metà raggio.
     private static let direzioni: [CGSize] = {
-        let d: CGFloat = 0.7071
-        return [CGSize(width: 1, height: 0), CGSize(width: -1, height: 0),
-                CGSize(width: 0, height: 1), CGSize(width: 0, height: -1),
-                CGSize(width: d, height: d), CGSize(width: -d, height: d),
-                CGSize(width: d, height: -d), CGSize(width: -d, height: -d)]
+        var v: [CGSize] = []
+        for i in 0..<16 {
+            let a = Double(i) * .pi / 8
+            v.append(CGSize(width: cos(a), height: sin(a)))
+        }
+        for i in 0..<8 {
+            let a = Double(i) * .pi / 4 + .pi / 8
+            v.append(CGSize(width: cos(a) * 0.5, height: sin(a) * 0.5))
+        }
+        return v
     }()
 
     var body: some View {
         GeometryReader { geo in
             let lato = min(geo.size.width, geo.size.height)
+            let w = spessoreContorno ?? Arte.aloneCifra(lato)
+            let coloreAlone = contorno ?? (accesa ? Theme.cellSelected : Theme.cell)
             ZStack {
-                if let contorno {
-                    ForEach(0..<Self.direzioni.count, id: \.self) { i in
-                        cifra(lato: lato)
-                            .foregroundStyle(contorno)
-                            .offset(x: Self.direzioni[i].width * spessoreContorno,
-                                    y: Self.direzioni[i].height * spessoreContorno)
+                if alone {
+                    ZStack {
+                        ForEach(0..<Self.direzioni.count, id: \.self) { i in
+                            cifra(lato: lato)
+                                .offset(x: Self.direzioni[i].width * w,
+                                        y: Self.direzioni[i].height * w)
+                        }
                     }
+                    .foregroundStyle(coloreAlone)
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .drawingGroup()
                 }
                 cifra(lato: lato)
                     .foregroundStyle(accesa ? Theme.text : (coloreSpento ?? Theme.text))

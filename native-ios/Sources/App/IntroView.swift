@@ -1,59 +1,30 @@
 import SwiftUI
 
-/// INTRO animata all'avvio (la "landing" dell'app): un filo d'oro disegna il
-/// logo sulla griglia di puntini, poi compaiono la parola FILO e il claim.
-/// Rispetta Riduci Movimento (mostra tutto subito, senza animazione).
-/// Al termine chiama `onFinish`, che dissolve l'intro rivelando il gioco.
+/// INTRO all'avvio (REDESIGN_SPEC §6.1): sfondo subito; il logo entra con
+/// dissolvenza + salita di 6 pt (0,45 s easeOut), il claim segue con una
+/// dissolvenza di 0,3 s, breve pausa (0,6 s), poi `onFinish` dissolve
+/// l'intro sulla Home (0,3 s, in FiloApp). Totale ≈ 1,35 s + 0,3 s.
+/// Riduci Movimento: tutto statico, 1,0 s.
 struct IntroView: View {
     var onFinish: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @State private var trimEnd: CGFloat = 0
-    @State private var endDot = false
-    @State private var wordmark = false
+    @State private var logo = false
     @State private var tagline = false
-
-    // Stesso "viewBox" 200×150 della landing web: coerenza col brand e con l'icona.
-    private let dots: [CGPoint] = {
-        var a: [CGPoint] = []
-        for y in [30.0, 75.0, 120.0] {
-            for x in [30.0, 75.0, 120.0, 165.0] { a.append(CGPoint(x: x, y: y)) }
-        }
-        return a
-    }()
-    private let thread: [CGPoint] = [
-        CGPoint(x: 30, y: 120), CGPoint(x: 30, y: 75), CGPoint(x: 120, y: 75),
-        CGPoint(x: 120, y: 30), CGPoint(x: 165, y: 30)
-    ]
 
     var body: some View {
         ZStack {
-            SfondoTema()
-            VStack(spacing: 18) {
-                art
-                    .frame(width: 230, height: 172)
-                if Theme.usaArte {
-                    // Logo in corda d'oro: entra con fade + leggero scale e un
-                    // bagliore dorato che si posa (stessi tempi del wordmark).
-                    Image(decorative: "LogoFilo")
-                        .resizable()
-                        .interpolation(.high)
-                        .scaledToFit()
-                        .frame(maxWidth: 280, maxHeight: 96)
-                        .shadow(color: Arte.oro.opacity(wordmark ? 0.35 : 0), radius: 18)
-                        .opacity(wordmark ? 1 : 0)
-                        .scaleEffect(wordmark ? 1 : 0.88)
-                } else {
-                    Text("FILO")
-                        .font(.system(size: 64, weight: .heavy))
-                        .kerning(14)
-                        .padding(.leading, 14)
-                        .foregroundStyle(Theme.filoGradient)
-                        .opacity(wordmark ? 1 : 0)
-                        .scaleEffect(wordmark ? 1 : 0.92)
-                }
-                Text("Un filo. Una somma. Ogni giorno.")
-                    .font(.subheadline)
+            FiloBackground()
+            VStack(spacing: 8) {
+                Image(decorative: "LogoFilo")
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(width: 176)
+                    .opacity(logo ? 1 : 0)
+                    .offset(y: logo || reduceMotion ? 0 : 6)
+                Text("Un filo al giorno.")
+                    .filoFont(.body)
                     .foregroundStyle(Theme.textMuted)
                     .multilineTextAlignment(.center)
                     .opacity(tagline ? 1 : 0)
@@ -62,57 +33,23 @@ struct IntroView: View {
         }
         .task { await run() }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("FILO")
-    }
-
-    private var art: some View {
-        GeometryReader { geo in
-            let s = min(geo.size.width / 200, geo.size.height / 150)
-            let ox = (geo.size.width - 200 * s) / 2
-            let oy = (geo.size.height - 150 * s) / 2
-            let P: (CGPoint) -> CGPoint = { CGPoint(x: ox + $0.x * s, y: oy + $0.y * s) }
-            ZStack {
-                ForEach(0..<dots.count, id: \.self) { i in
-                    Circle()
-                        .fill(Theme.filoScuro.opacity(0.5))
-                        .frame(width: 8 * s, height: 8 * s)
-                        .position(P(dots[i]))
-                }
-                if Theme.usaArte {
-                    CordaOro(punti: thread.map(P), trim: trimEnd, spessore: 9 * s)
-                } else {
-                    PolylineShape(points: thread.map(P))
-                        .trim(from: 0, to: trimEnd)
-                        .stroke(Theme.filoGradient,
-                                style: StrokeStyle(lineWidth: 9 * s, lineCap: .round, lineJoin: .round))
-                        .shadow(color: Theme.filo.opacity(0.6), radius: 8 * s)
-                }
-                Circle()
-                    .fill(Theme.filoGradient)
-                    .frame(width: 15 * s, height: 15 * s)
-                    .position(P(thread[thread.count - 1]))
-                    .opacity(endDot ? 1 : 0)
-            }
-        }
+        .accessibilityLabel(Text("FILO"))
     }
 
     private func run() async {
         if reduceMotion {
-            trimEnd = 1; endDot = true; wordmark = true; tagline = true
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            logo = true
+            tagline = true
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
             onFinish()
             return
         }
-        // Disegno del filo più lento e con un respiro finale più lungo, così
-        // l'intro non "sparisce subito" (durata totale ~4,6s).
-        withAnimation(.easeInOut(duration: 1.9)) { trimEnd = 1 }
-        try? await Task.sleep(nanoseconds: 1_850_000_000)
-        withAnimation(.spring(response: 0.45, dampingFraction: 0.7)) { endDot = true }
+        withAnimation(.easeOut(duration: 0.45)) { logo = true }
+        try? await Task.sleep(nanoseconds: 450_000_000)
+        withAnimation(.easeOut(duration: 0.3)) { tagline = true }
         try? await Task.sleep(nanoseconds: 300_000_000)
-        withAnimation(.easeOut(duration: 0.55)) { wordmark = true }
-        try? await Task.sleep(nanoseconds: 550_000_000)
-        withAnimation(.easeOut(duration: 0.5)) { tagline = true }
-        try? await Task.sleep(nanoseconds: 2_000_000_000)
+        // pausa di lettura
+        try? await Task.sleep(nanoseconds: 600_000_000)
         onFinish()
     }
 }

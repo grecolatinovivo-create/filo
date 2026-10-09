@@ -2,12 +2,12 @@ import SwiftUI
 import Combine
 import FiloCore
 
-/// MENU DI GIOCO — la home dopo l'intro: scelta fra "FILO del giorno" e
-/// "Salita". La card del daily si accende a mezzanotte (nuovo puzzle) e si
-/// spegne quando la partita di oggi è conclusa; la Salita è sempre attiva.
-/// Le schermate si aprono con la transizione a blocchi numerici
-/// (TileRevealTransition), presentate in fullScreenCover senza animazione di
-/// sistema: il cambio avviene "sotto" le tessere.
+/// HOME (REDESIGN_SPEC §6.2): header con icone (Statistiche, Archivio, Come
+/// si gioca, Impostazioni), logo + claim, card "FILO di oggi" (gioca /
+/// continua / completato con conto alla rovescia) e card "Salita".
+/// Daily e Salita si aprono in fullScreenCover con il crossfade del
+/// `TileTransitionController` (+ spostamento di 12 pt), senza animazione di
+/// sistema: il cambio avviene "sotto" il fondale.
 struct MenuView: View {
     @EnvironmentObject private var vm: GameViewModel
     @EnvironmentObject private var theme: ThemeManager   // ridisegna al cambio tema
@@ -16,13 +16,17 @@ struct MenuView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// True quando la Home è visibile (intro dissolta): avvia l'entrata.
+    var entrata: Bool = true
+
     @StateObject private var tessere = TileTransitionController()
     @State private var showDaily = false
     @State private var showSalita = false
     /// "Adesso" aggiornato dal timer/scenePhase: fa ricalcolare lo stato della
     /// card daily allo scoccare della mezzanotte anche senza tocchi.
     @State private var adesso = Date()
-    @State private var glowPulse = false
+    /// Entrata della Home (logo → card di oggi → Salita).
+    @State private var entrato = false
 
     private let timerGiorno = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
@@ -37,6 +41,12 @@ struct MenuView: View {
 
     private var dailyDisponibile: Bool {
         !vm.engine.gameOver || giornoNuovoDisponibile
+    }
+
+    /// Partita di oggi iniziata (almeno un filo concluso o in corso).
+    private var dailyInCorso: Bool {
+        !giornoNuovoDisponibile && !vm.engine.gameOver
+            && (!vm.engine.fili.isEmpty || !vm.engine.filo.isEmpty)
     }
 
     /// `vm.scheda` vista dal menu: nil (nessuna presentazione, nessun
@@ -58,24 +68,47 @@ struct MenuView: View {
     // MARK: Body
 
     var body: some View {
-        ZStack {
-            SfondoTema()
+        GeometryReader { geo in
+            let margin = FiloMetrics.margin(forWidth: geo.size.width)
+            let corto = geo.size.height < 700
+            ZStack {
+                FiloBackground()
 
-            VStack(spacing: 0) {
-                Spacer(minLength: 24)
-                wordmark
-                Spacer(minLength: 28)
-                VStack(spacing: 18) {
-                    dailyCard
-                    salitaCard
+                VStack(spacing: 0) {
+                    header
+                        .padding(.horizontal, max(4, margin - 12))
+                        .opacity(entrato ? 1 : 0)
+                        .animation(entrataAnimazione(ritardo: 0), value: entrato)
+
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            logo
+                                .opacity(entrato ? 1 : 0)
+                                .offset(y: entrato || reduceMotion ? 0 : 6)
+                                .animation(entrataAnimazione(ritardo: 0, durata: 0.45), value: entrato)
+
+                            dailyCard
+                                .padding(.top, corto ? 24 : 40)
+                                .opacity(entrato ? 1 : 0)
+                                .offset(y: entrato || reduceMotion ? 0 : 8)
+                                .animation(entrataAnimazione(ritardo: 0.12), value: entrato)
+
+                            salitaCard
+                                .padding(.top, 16)
+                                .opacity(entrato ? 1 : 0)
+                                .offset(y: entrato || reduceMotion ? 0 : 8)
+                                .animation(entrataAnimazione(ritardo: 0.20), value: entrato)
+                        }
+                        .frame(maxWidth: 480)
+                        .padding(.horizontal, margin)
+                        .padding(.vertical, corto ? 8 : 16)
+                        .frame(maxWidth: .infinity,
+                               minHeight: max(0, geo.size.height - FiloMetrics.headerHeight - 48))   // centro ottico un po' più in alto
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
                 }
-                .padding(.horizontal, 24)
-                .frame(maxWidth: 480)
-                Spacer(minLength: 28)
-                iconRow
-                Spacer(minLength: 20)
+                .filoScreenShift(tessere)   // solo il contenuto: lo sfondo resta fermo
             }
-            .frame(maxWidth: .infinity)
         }
         .overlay(TileRevealOverlay(controller: tessere))
         // UNA sola sheet attiva per contesto: mentre il daily (o la Salita) è
@@ -90,309 +123,260 @@ struct MenuView: View {
             case .risultato: ResultView()
             case .statistiche: StatsView()
             case .profilo: ProfileView()
+            case .archivio: ArchiveView()
             }
         }
         .fullScreenCover(isPresented: $showDaily) {
-            RootView(onBack: { chiudiSchermata { showDaily = false } })
-                .environmentObject(vm)
-                .environmentObject(theme)
-                .environmentObject(store)
-                .environmentObject(account)
-                .overlay(TileRevealOverlay(controller: tessere))
+            // Fondale fisso sotto la schermata: lo spostamento di 12 pt non
+            // scopre mai il fondo del cover.
+            ZStack {
+                FiloBackground()
+                RootView(onBack: { chiudiSchermata { showDaily = false } })
+                    .filoScreenShift(tessere)
+            }
+            .environmentObject(vm)
+            .environmentObject(theme)
+            .environmentObject(store)
+            .environmentObject(account)
+            .overlay(TileRevealOverlay(controller: tessere))
         }
         .fullScreenCover(isPresented: $showSalita) {
-            SalitaView(onClose: { chiudiSchermata { showSalita = false } })
-                .environmentObject(theme)
-                .overlay(TileRevealOverlay(controller: tessere))
+            ZStack {
+                FiloBackground()
+                SalitaView(onClose: { chiudiSchermata { showSalita = false } })
+                    .filoScreenShift(tessere)
+            }
+            .environmentObject(theme)
+            .overlay(TileRevealOverlay(controller: tessere))
         }
         .onChange(of: scenePhase) { _, fase in
-            if fase == .active {
-                vm.checkNuovoGiorno()
-                adesso = Date()
-            }
+            if fase == .active { aggiornaGiorno() }
         }
-        .onReceive(timerGiorno) { _ in
-            vm.checkNuovoGiorno()
-            adesso = Date()
+        .onReceive(timerGiorno) { _ in aggiornaGiorno() }
+        .onChange(of: entrata) { _, visibile in
+            if visibile { entrato = true }
+        }
+        .onAppear {
+            if entrata { entrato = true }
         }
         .preferredColorScheme(.dark)
     }
 
-    // MARK: Wordmark
+    /// Animazione d'entrata (spec §6.2/§8). Riduci Movimento: dissolvenza 0,15 s.
+    private func entrataAnimazione(ritardo: Double, durata: Double = 0.32) -> Animation {
+        reduceMotion ? FiloMotion.reduced : .easeOut(duration: durata).delay(ritardo)
+    }
 
-    private var wordmark: some View {
-        VStack(spacing: 6) {
-            if Theme.usaArte {
-                // Logo in corda d'oro: per VoiceOver (e per chi cerca il
-                // testo) resta l'intestazione "FILO".
-                Image("LogoFilo")
-                    .resizable()
-                    .interpolation(.high)
-                    .scaledToFit()
-                    .frame(maxWidth: 240, maxHeight: 82)
-                    .shadow(color: Arte.oro.opacity(0.35), radius: 14)
-                    .accessibilityLabel(Text("FILO"))
-                    .accessibilityRemoveTraits(.isImage)
-                    .accessibilityAddTraits(.isHeader)
-            } else {
-                Text("FILO")
-                    .font(.system(size: 40, weight: .heavy))
-                    .kerning(12)
-                    .padding(.leading, 12)   // compensa il kerning finale
-                    .foregroundStyle(Theme.filoGradient)
-                    .accessibilityAddTraits(.isHeader)
+    // MARK: Header (48 pt, icone 44×44 allineate a destra)
+
+    private var header: some View {
+        HStack(spacing: 0) {
+            Spacer(minLength: 0)
+            FiloIconButton(systemName: "chart.bar", label: "Statistiche") {
+                vm.scheda = .statistiche
             }
-            Text("FILO #\(vm.numero)")
-                .captionStyle()
+            FiloIconButton(systemName: "square.grid.2x2", label: "Archivio") {
+                vm.scheda = .archivio
+            }
+            FiloIconButton(systemName: "questionmark.circle", label: "Come si gioca") {
+                vm.scheda = .comeSiGioca
+            }
+            FiloIconButton(systemName: "gearshape", label: "Impostazioni") {
+                vm.scheda = .profilo
+            }
+        }
+        .frame(height: FiloMetrics.headerHeight)
+    }
+
+    // MARK: Logo + claim
+
+    private var logo: some View {
+        VStack(spacing: 8) {
+            // Per VoiceOver (e per chi cerca il testo) resta l'intestazione "FILO".
+            Image("LogoFilo")
+                .resizable()
+                .interpolation(.high)
+                .scaledToFit()
+                .frame(width: 176)
+                .accessibilityLabel(Text("FILO"))
+                .accessibilityRemoveTraits(.isImage)
+                .accessibilityAddTraits(.isHeader)
+            Text("Un filo al giorno.")
+                .filoFont(.body)
+                .foregroundStyle(Theme.textMuted)
+                .multilineTextAlignment(.center)
         }
     }
 
-    // MARK: Card FILO del giorno
+    // MARK: Card FILO di oggi
 
-    @ViewBuilder
+    /// Card unica con tre stati (gioca / continua / completato). L'intera
+    /// card è un solo pulsante e un solo elemento d'accessibilità, con le
+    /// etichette usate dai test UI.
     private var dailyCard: some View {
-        if dailyDisponibile {
-            dailyCardAccesa
-        } else {
-            dailyCardSpenta
-        }
-    }
-
-    /// Stato ACCESO: oggi non ancora concluso, oppure è scoccata la mezzanotte
-    /// (nuovo puzzle pronto anche se il vecchio engine è gameOver).
-    private var dailyCardAccesa: some View {
-        Button { apriDaily() } label: {
-            HStack(spacing: 16) {
-                if Theme.usaArte {
-                    cardIllustrazione("CardDaily")
-                } else {
-                    cardIcon(emoji: "🧵", tinta: Theme.filo)
+        let completato = !dailyDisponibile
+        return Button {
+            FiloHaptics.light()
+            if completato { vm.mostraRisultato() } else { apriDaily() }
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("FILO di oggi")
+                        .eyebrowStyle()
+                    Spacer(minLength: 8)
+                    if !giornoNuovoDisponibile {
+                        Text(verbatim: "#\(vm.numero)")
+                            .filoFont(.caption)
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.textTertiary)
+                    }
                 }
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("FILO del giorno")
-                        .font(.title3.weight(.bold))
+
+                if giornoNuovoDisponibile {
+                    Text("C'è un nuovo FILO.")
+                        .filoFont(.cardTitle)
                         .foregroundStyle(Theme.text)
-                    if giornoNuovoDisponibile {
-                        Text("🧵 C'è un nuovo FILO!")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(Theme.filo)
-                    } else {
-                        Text("Somma del Giorno: \(vm.puzzle.T)")
-                            .font(.subheadline)
-                            .foregroundStyle(Theme.textMuted)
-                    }
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(Theme.filo)
-            }
-            .padding(cardPadding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background {
-                if Theme.usaArte {
-                    PannelloVelluto(raggio: 22, bordoOpacita: 1, bordoSpessore: 1.5)
+                        .padding(.top, 16)
                 } else {
-                    RoundedRectangle(cornerRadius: 22).fill(Theme.surface)
-                        .overlay(RoundedRectangle(cornerRadius: 22)
-                            .strokeBorder(Theme.filo.opacity(0.85), lineWidth: 2))
-                }
-            }
-            .shadow(color: Theme.filo.opacity(glowPulse ? 0.5 : 0.22),
-                    radius: glowPulse ? 18 : 10, y: 2)
-        }
-        .buttonStyle(MenuCardStyle())
-        .onAppear {
-            guard !reduceMotion else { return }
-            glowPulse = false
-            withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
-                glowPulse = true
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(String(localized: "FILO del giorno, disponibile"))
-    }
-
-    /// Stato SPENTO: partita di oggi conclusa e mezzanotte non ancora passata.
-    /// Resta tappabile per rivedere risultato e percorso del Sarto.
-    private var dailyCardSpenta: some View {
-        Button { apriDaily() } label: {
-            HStack(spacing: 16) {
-                Group {
-                    if Theme.usaArte {
-                        cardIllustrazione("CardDaily")
-                    } else {
-                        cardIcon(emoji: "🧵", tinta: Theme.textMuted)
-                    }
-                }
-                .saturation(0)
-                .opacity(0.6)
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        Text("FILO del giorno")
-                            .font(.title3.weight(.bold))
+                    HStack(alignment: .center, spacing: 12) {
+                        Text("Somma \(numeroObiettivo)")
+                            .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(Theme.textMuted)
-                        Text("Fatto ✓")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(Theme.bg)
-                            .padding(.vertical, 3)
-                            .padding(.horizontal, 8)
-                            .background(Theme.textMuted, in: Capsule())
-                    }
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Il prossimo FILO si cuce tra")
-                            .font(.footnote)
-                            .foregroundStyle(Theme.textMuted)
-                        TimelineView(.periodic(from: .now, by: 1)) { ctx in
-                            Text(verbatim: ResultView.countdown(da: ctx.date))
-                                .font(.system(.footnote, design: .monospaced).weight(.semibold))
-                                .monospacedDigit()
-                                .foregroundStyle(Theme.textMuted)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                        Spacer(minLength: 0)
+                        if completato {
+                            if vm.engine.stato == .vinta {
+                                Chip("Completato", systemImage: "checkmark", tint: Theme.success, filled: true)
+                            } else {
+                                Chip("Completato")
+                            }
                         }
                     }
+                    .padding(.top, 4)
+
+                    Text("Il Sarto ha usato \(vm.puzzle.lSarto) caselle.")
+                        .filoFont(.body)
+                        .foregroundStyle(Theme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(Theme.textMuted.opacity(0.6))
+
+                // "Bottone" primario visivo: l'azione è quella dell'intera card.
+                Text(titoloAzioneDaily(completato: completato))
+                    .filoFont(.button)
+                    .foregroundStyle(Theme.onGold)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity, minHeight: FiloMetrics.primaryHeight)
+                    .background(
+                        RoundedRectangle(cornerRadius: FiloMetrics.buttonRadius, style: .continuous)
+                            .fill(Theme.gold)
+                    )
+                    .padding(.top, 20)
+
+                if completato {
+                    TimelineView(.periodic(from: .now, by: 15)) { ctx in
+                        let r = Self.tempoAllaMezzanotte(da: ctx.date)
+                        Text("Prossimo FILO tra \(r.ore) h \(r.minuti) min")
+                            .filoFont(.caption)
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.textTertiary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 12)
+                }
             }
-            .padding(cardPadding)
+            .padding(FiloMetrics.cardPaddingLarge)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background {
-                if Theme.usaArte {
-                    PannelloVelluto(raggio: 22, bordoOpacita: 0, bordoSpessore: 1)
-                        .opacity(0.7)
-                        .overlay(RoundedRectangle(cornerRadius: 22)
-                            .strokeBorder(Theme.border, lineWidth: 1))
-                } else {
-                    RoundedRectangle(cornerRadius: 22).fill(Theme.surface2.opacity(0.55))
-                        .overlay(RoundedRectangle(cornerRadius: 22)
-                            .strokeBorder(Theme.border, lineWidth: 1))
-                }
-            }
+            .background(FiloCardBackground(radius: FiloMetrics.cardRadius))
+            .contentShape(RoundedRectangle(cornerRadius: FiloMetrics.cardRadius, style: .continuous))
         }
         .buttonStyle(MenuCardStyle())
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(String(localized: "FILO del giorno, già completato, si rinnova a mezzanotte"))
+        .accessibilityLabel(completato
+            ? String(localized: "FILO del giorno, già completato, si rinnova a mezzanotte")
+            : String(localized: "FILO del giorno, disponibile"))
+    }
+
+    /// Numero obiettivo in SF Rounded 64 bold oro, interpolato nella chiave
+    /// "Somma %@" (l'ordine delle parole resta localizzabile).
+    private var numeroObiettivo: Text {
+        Text(verbatim: "\(vm.puzzle.T)")
+            .font(FiloFont.target())
+            .kerning(-1.5)
+            .foregroundStyle(Theme.gold)
+    }
+
+    private func titoloAzioneDaily(completato: Bool) -> LocalizedStringKey {
+        if completato { return "Rivedi il risultato" }
+        if dailyInCorso { return "Continua la partita" }
+        return "Gioca il FILO di oggi"
+    }
+
+    /// Ore e minuti alla prossima mezzanotte locale (minuti arrotondati per
+    /// eccesso: "0 h 1 min" fino allo scoccare).
+    nonisolated static func tempoAllaMezzanotte(da now: Date) -> (ore: Int, minuti: Int) {
+        let cal = Calendar.current
+        let inizio = cal.startOfDay(for: now)
+        let domani = cal.date(byAdding: .day, value: 1, to: inizio) ?? now.addingTimeInterval(86_400)
+        let secondi = max(0, Int(domani.timeIntervalSince(now).rounded(.up)))
+        let minutiTotali = (secondi + 59) / 60
+        return (minutiTotali / 60, minutiTotali % 60)
     }
 
     // MARK: Card Salita
 
     private var salitaCard: some View {
-        Button { apriSalita() } label: {
+        Button {
+            FiloHaptics.light()
+            apriSalita()
+        } label: {
             HStack(spacing: 16) {
-                if Theme.usaArte {
-                    cardIllustrazione("CardSalita")
-                } else {
-                    cardIcon(systemName: "figure.climbing", tinta: Theme.sarto)
-                }
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Salita")
-                        .font(.title3.weight(.bold))
+                        .filoFont(.cardTitle)
                         .foregroundStyle(Theme.text)
-                    Text("Livelli a somma crescente")
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.textMuted)
-                    if salitaBest > 0 {
-                        Text("Record: livello \(salitaBest)")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(Theme.sarto)
+                    Group {
+                        if salitaBest > 0 {
+                            Text("Livello \(salitaBest) · \(3) vite")
+                        } else {
+                            Text("Somme sempre più alte, tre vite")
+                        }
                     }
+                    .filoFont(.body)
+                    .foregroundStyle(Theme.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(Theme.sarto)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Theme.textTertiary)
+                    .accessibilityHidden(true)
             }
-            .padding(cardPadding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background {
-                if Theme.usaArte {
-                    PannelloVelluto(raggio: 22, bordoOpacita: 0.6, bordoSpessore: 1.2)
-                } else {
-                    RoundedRectangle(cornerRadius: 22).fill(Theme.surface)
-                        .overlay(RoundedRectangle(cornerRadius: 22)
-                            .strokeBorder(Theme.sarto.opacity(0.5), lineWidth: 1.5))
-                }
-            }
-            .shadow(color: .black.opacity(0.25), radius: 10, y: 2)
+            .padding(FiloMetrics.cardPadding)
+            .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
+            .background(FiloCardBackground(radius: FiloMetrics.cardRadius))
+            .contentShape(RoundedRectangle(cornerRadius: FiloMetrics.cardRadius, style: .continuous))
         }
         .buttonStyle(MenuCardStyle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel(String(localized: "Salita, sempre disponibile"))
     }
 
-    // MARK: Icone secondarie (44×44)
+    // MARK: Cambio giorno
 
-    private var iconRow: some View {
-        HStack(spacing: 12) {
-            Button {
-                vm.scheda = .statistiche
-            } label: {
-                Image(systemName: "chart.bar.fill")
-                    .font(.title3)
-                    .foregroundStyle(Theme.textMuted)
-                    .frame(width: 44, height: 44)
-            }
-            .accessibilityLabel("Statistiche")
-
-            Button {
-                vm.scheda = .profilo
-            } label: {
-                Image(systemName: store.isPro ? "person.crop.circle.badge.checkmark" : "person.crop.circle")
-                    .font(.title3)
-                    .foregroundStyle(store.isPro ? Theme.filo : Theme.textMuted)
-                    .frame(width: 44, height: 44)
-            }
-            .accessibilityLabel("Profilo e temi")
-
-            Button {
-                vm.scheda = .comeSiGioca
-            } label: {
-                Image(systemName: "questionmark.circle")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(Theme.textMuted)
-                    .frame(width: 44, height: 44)
-            }
-            .accessibilityLabel("Come si gioca")
+    /// Timer/scenePhase: se è scoccata la mezzanotte e la Home è libera
+    /// (nessuna schermata o scheda aperta), carica subito il FILO nuovo così
+    /// la card mostra sempre il puzzle di oggi.
+    private func aggiornaGiorno() {
+        vm.checkNuovoGiorno()
+        adesso = Date()
+        if giornoNuovoDisponibile, !showDaily, !showSalita, vm.scheda == nil, !tessere.attiva {
+            vm.giocaNuovoGiorno()
         }
     }
 
-    /// Padding interno delle card: col kit grafico l'illustrazione è più
-    /// grande dell'icona, quindi si recupera un po' di spazio verticale.
-    private var cardPadding: EdgeInsets {
-        Theme.usaArte ? EdgeInsets(top: 14, leading: 14, bottom: 14, trailing: 20)
-                      : EdgeInsets(top: 20, leading: 20, bottom: 20, trailing: 20)
-    }
-
-    /// Illustrazione del kit (CardDaily / CardSalita), decorativa.
-    private func cardIllustrazione(_ nome: String) -> some View {
-        Image(decorative: nome)
-            .resizable()
-            .interpolation(.high)
-            .scaledToFit()
-            .frame(width: 64, height: 64)
-            .accessibilityHidden(true)
-    }
-
-    private func cardIcon(emoji: String? = nil, systemName: String? = nil, tinta: Color) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 14)
-                .fill(tinta.opacity(0.14))
-            RoundedRectangle(cornerRadius: 14)
-                .strokeBorder(tinta.opacity(0.35), lineWidth: 1)
-            if let emoji {
-                Text(verbatim: emoji).font(.title2)
-            } else if let systemName {
-                Image(systemName: systemName)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(tinta)
-            }
-        }
-        .frame(width: 52, height: 52)
-    }
-
-    // MARK: Apertura/chiusura con le tessere
+    // MARK: Apertura/chiusura (crossfade + 12 pt)
 
     private func apriDaily() {
         guard !tessere.attiva else { return }
@@ -407,8 +391,8 @@ struct MenuView: View {
         apriSchermata(da: .bottomTrailing) { showSalita = true }
     }
 
-    /// Entrata tessere → a schermo coperto presenta il cover SENZA animazione
-    /// di sistema (il cambio avviene sotto la griglia) → uscita tessere.
+    /// Dissolvenza in entrata → a schermo coperto presenta il cover SENZA
+    /// animazione di sistema → dissolvenza in uscita.
     private func apriSchermata(da origine: UnitPoint,
                                _ presenta: @escaping @MainActor () -> Void) {
         tessere.esegui(da: origine, reduceMotion: reduceMotion) {
@@ -430,13 +414,15 @@ struct MenuView: View {
     }
 }
 
-/// Stile delle card del menu: leggera pressione (scale + opacity), niente
-/// styling proprio — il look vive nella label.
+/// Stile delle card del menu: leggera pressione (scale), niente styling
+/// proprio — il look vive nella label.
 struct MenuCardStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.975 : 1)
-            .opacity(configuration.isPressed ? 0.92 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.975 : 1)
+            .opacity(configuration.isPressed ? 0.94 : 1)
+            .animation(FiloMotion.press, value: configuration.isPressed)
     }
 }

@@ -1,41 +1,62 @@
 import SwiftUI
 import AuthenticationServices
 
-/// PROFILO / IMPOSTAZIONI (locale). L'app è gratis: tutti gli extra sono
-/// sbloccati. Qui vivono: accesso con Apple ID (opzionale), scelta del tema,
-/// archivio, e — per l'admin/tester — gli strumenti di test.
+/// IMPOSTAZIONI (REDESIGN_SPEC §6.10), locale. L'app è gratis: tutti gli
+/// extra sono sbloccati. Qui vivono: nota "gratis" (o accesso con Apple ID,
+/// se abilitato), suoni e vibrazione, archivio, info e — per l'admin/tester —
+/// gli strumenti di test.
 struct ProfileView: View {
     @EnvironmentObject private var vm: GameViewModel
     @EnvironmentObject private var store: Store
-    @EnvironmentObject private var theme: ThemeManager
     @EnvironmentObject private var account: Account
     @Environment(\.dismiss) private var dismiss
 
     @State private var mostraArchivio = false
     // Stesso storage letto da SoundManager ("filo.suoni"): il toggle è immediato.
     @AppStorage(SoundManager.defaultsKey) private var suoniAttivi = true
+    // Stesso storage letto da FiloHaptics ("filo.haptics", default attivo).
+    @AppStorage(FiloHaptics.defaultsKey) private var vibrazioneAttiva = true
 
     private var mostraStrumentiAdmin: Bool { store.isSandbox || account.isAdmin }
 
     var body: some View {
-        ZStack {
-            SfondoTema()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    header
-                    if AppConfig.appleSignInEnabled { accessoSezione } else { gratisSezione }
-                    if mostraStrumentiAdmin { testerSezione }
-                    suoniSezione
-                    archivioSezione
-                    infoSezione
+        GeometryReader { geo in
+            let margine = FiloMetrics.margin(forWidth: geo.size.width)
+            ZStack {
+                FiloBackground()
+                VStack(spacing: 0) {
+                    barra(margine: margine)
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: FiloMetrics.relatedGapLarge) {
+                            Text("Impostazioni")
+                                .filoFont(.screenTitle)
+                                .foregroundStyle(Theme.text)
+                                .accessibilityAddTraits(.isHeader)
+                                .padding(.bottom, FiloMetrics.relatedGap)
+                            if AppConfig.appleSignInEnabled { accessoSezione } else { gratisSezione }
+                            if mostraStrumentiAdmin { testerSezione }
+                            preferenzeSezione
+                            archivioSezione
+                            infoSezione
+                                .padding(.top, FiloMetrics.relatedGap)
+                        }
+                        .padding(.horizontal, margine)
+                        .padding(.top, 4)
+                        .padding(.bottom, FiloMetrics.sectionGapLarge)
+                        .frame(maxWidth: 560)
+                        .frame(maxWidth: .infinity)
+                    }
+                    .scrollIndicators(.hidden)
                 }
-                .padding(24)
-                .frame(maxWidth: 520)
-                .frame(maxWidth: .infinity)
             }
         }
         .preferredColorScheme(.dark)
+        .presentationCornerRadius(FiloMetrics.sheetCorner)
         .sheet(isPresented: $mostraArchivio) { ArchiveView() }
+        .onChange(of: vibrazioneAttiva) { _, attiva in
+            // conferma tattile quando la vibrazione viene riattivata
+            if attiva { FiloHaptics.light() }
+        }
         .alert("Accesso Apple", isPresented: Binding(
             get: { account.errore != nil },
             set: { if !$0 { account.errore = nil } })) {
@@ -45,93 +66,94 @@ struct ProfileView: View {
         }
     }
 
-    private var header: some View {
+    /// Barra 48 pt con la sola chiusura (titolo grande sotto, nel contenuto).
+    private func barra(margine: CGFloat) -> some View {
         HStack {
-            Text("Profilo")
-                .font(.title3.weight(.bold))
-                .foregroundStyle(Theme.text)
-                .accessibilityAddTraits(.isHeader)
             Spacer()
-            Button { dismiss() } label: {
-                Image(systemName: "xmark")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(Theme.textMuted)
-                    .frame(width: 44, height: 44)
-            }
-            .accessibilityLabel("Chiudi")
+            FiloIconButton(systemName: "xmark", label: "Chiudi") { dismiss() }
         }
+        .frame(height: FiloMetrics.headerHeight)
+        .padding(.horizontal, max(0, margine - 10))
+        .padding(.top, 4)
     }
 
     // MARK: Card "app gratis" (login Apple in pausa) — nessun pulsante di accesso
 
     private var gratisSezione: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                Text("🧵").font(.title)
-                VStack(alignment: .leading, spacing: 2) {
+        FiloCard {
+            HStack(spacing: 14) {
+                icona("gift")
+                VStack(alignment: .leading, spacing: 4) {
                     Text("FILO è gratis")
-                        .font(.headline).foregroundStyle(Theme.text)
+                        .filoFont(.cardTitle)
+                        .foregroundStyle(Theme.text)
                     Text("Tutti gli extra sono sbloccati, nessun acquisto.")
-                        .font(.caption).foregroundStyle(Theme.textMuted)
+                        .filoFont(.caption)
+                        .foregroundStyle(Theme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                Spacer()
+                Spacer(minLength: 0)
             }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.border, lineWidth: 1))
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: Accesso (Apple ID, opzionale) — app gratis
 
     private var accessoSezione: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                Text(account.isAdmin ? "🧵👑" : "🧵").font(.title)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(titoloAccesso)
-                        .font(.headline).foregroundStyle(Theme.text)
-                    Text(sottotitoloAccesso)
-                        .font(.caption).foregroundStyle(Theme.textMuted)
-                }
-                Spacer()
-            }
-
-            if account.isLoggedIn {
-                if account.isAdmin {
-                    Text("Admin — tutto sbloccato")
-                        .font(.caption.weight(.bold)).foregroundStyle(Theme.filo)
-                }
-                // ID mostrato per poter abilitare l'admin in futuro.
-                Text("ID: \(account.userID ?? "")")
-                    .font(.caption2.monospaced()).foregroundStyle(Theme.textMuted)
-                    .textSelection(.enabled)
-                    .lineLimit(1).truncationMode(.middle)
-                Button("Esci") { account.esci() }
-                    .font(.subheadline).foregroundStyle(Theme.filo)
-                    .frame(minHeight: 44)
-            } else {
-                Button {
-                    account.accedi()
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "apple.logo")
-                        Text("Accedi con Apple").font(.body.weight(.semibold))
+        FiloCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 14) {
+                    icona(account.isAdmin ? "crown" : "person.crop.circle")
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(titoloAccesso)
+                            .filoFont(.cardTitle)
+                            .foregroundStyle(Theme.text)
+                        Text(sottotitoloAccesso)
+                            .filoFont(.caption)
+                            .foregroundStyle(Theme.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .foregroundStyle(.black)
-                    .frame(maxWidth: .infinity, minHeight: 48)
-                    .background(.white, in: Capsule())
+                    Spacer(minLength: 0)
                 }
-                .buttonStyle(.plain)
-                .disabled(account.inCorso)
-                Text("Facoltativo: gioca anche senza accedere.")
-                    .font(.caption2).foregroundStyle(Theme.textMuted)
+                .accessibilityElement(children: .combine)
+
+                if account.isLoggedIn {
+                    if account.isAdmin {
+                        Text("Admin — tutto sbloccato")
+                            .filoFont(.caption)
+                            .foregroundStyle(Theme.filo)
+                    }
+                    // ID mostrato per poter abilitare l'admin in futuro.
+                    Text("ID: \(account.userID ?? "")")
+                        .font(.caption2)
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.textMuted)
+                        .textSelection(.enabled)
+                        .lineLimit(1).truncationMode(.middle)
+                    Button("Esci") { account.esci() }
+                        .buttonStyle(TertiaryButtonStyle(color: Theme.filo))
+                } else {
+                    Button {
+                        account.accedi()
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "apple.logo")
+                            Text("Accedi con Apple").filoFont(.button)
+                        }
+                        .foregroundStyle(.black)
+                        .frame(maxWidth: .infinity, minHeight: FiloMetrics.secondaryHeight)
+                        .background(.white, in: RoundedRectangle(cornerRadius: FiloMetrics.buttonRadius,
+                                                                 style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(account.inCorso)
+                    Text("Facoltativo: gioca anche senza accedere.")
+                        .filoFont(.caption)
+                        .foregroundStyle(Theme.textTertiary)
+                }
             }
         }
-        .padding(16)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.border, lineWidth: 1))
     }
 
     private var titoloAccesso: String {
@@ -145,15 +167,19 @@ struct ProfileView: View {
             : String(localized: "Tutti gli extra sono sbloccati, nessun acquisto.")
     }
 
-    // MARK: Strumenti admin/tester
+    // MARK: Strumenti admin/tester (funzioni invariate)
 
     private var testerSezione: some View {
         VStack(alignment: .leading, spacing: 12) {
             Toggle(isOn: $store.testerUnlock) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Strumenti admin/tester").font(.body.weight(.semibold)).foregroundStyle(Theme.text)
+                    Text("Strumenti admin/tester")
+                        .fontWeight(.semibold)
+                        .filoFont(.body)
+                        .foregroundStyle(Theme.text)
                     Text("Forza lo sblocco di tutto (utile per provare).")
-                        .font(.caption).foregroundStyle(Theme.textMuted)
+                        .filoFont(.caption)
+                        .foregroundStyle(Theme.textMuted)
                 }
             }
             .tint(Theme.filo)
@@ -163,115 +189,97 @@ struct ProfileView: View {
                     vm.testerAzzera(); dismiss()
                 } label: {
                     Label("Azzera filo", systemImage: "arrow.counterclockwise")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(Theme.surface2, in: RoundedRectangle(cornerRadius: 12))
-                        .foregroundStyle(Theme.text)
                 }
+                .buttonStyle(SecondaryButtonStyle(fullWidth: true))
                 Button {
                     vm.testerNuoviNumeri(); dismiss()
                 } label: {
                     Label("Nuovi numeri", systemImage: "dice")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(Theme.surface2, in: RoundedRectangle(cornerRadius: 12))
-                        .foregroundStyle(Theme.text)
                 }
+                .buttonStyle(SecondaryButtonStyle(fullWidth: true))
             }
-            .buttonStyle(.plain)
             Text("«Nuovi numeri» carica una griglia casuale di prova (non è il FILO del giorno).")
-                .font(.caption2).foregroundStyle(Theme.textMuted)
+                .filoFont(.caption)
+                .foregroundStyle(Theme.textTertiary)
         }
-        .padding(16)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.filo.opacity(0.4), lineWidth: 1))
+        .padding(FiloMetrics.cardPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            let shape = RoundedRectangle(cornerRadius: FiloMetrics.cardRadius, style: .continuous)
+            shape.fill(Theme.surface)
+                .overlay(shape.strokeBorder(Theme.filo.opacity(0.4), lineWidth: 1))
+        }
     }
 
-    // MARK: Temi (tutti sbloccati)
+    // MARK: Suoni e vibrazione
 
-    private var temiSezione: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Tema").captionStyle()
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 12)], spacing: 12) {
-                ForEach(ThemeID.allCases) { t in
-                    temaChip(t)
-                }
+    private var preferenzeSezione: some View {
+        VStack(spacing: 0) {
+            Toggle(isOn: $suoniAttivi) {
+                voce(titolo: "Suoni", sottotitolo: "Un suono discreto per ogni casella.")
             }
-        }
-    }
+            .tint(Theme.filo)
+            .padding(.vertical, 14)
 
-    private func temaChip(_ t: ThemeID) -> some View {
-        let bloccato = t.premium && !store.featuresUnlocked
-        let selezionato = theme.id == t
-        let p = t.palette
-        return Button {
-            if bloccato { return }
-            theme.seleziona(t, sbloccato: store.featuresUnlocked)
-        } label: {
-            VStack(spacing: 6) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(LinearGradient(colors: [p.bg, p.bg2],
-                                             startPoint: .top, endPoint: .bottom))
-                    Capsule().fill(LinearGradient(colors: [p.filoHover, p.filo],
-                                                  startPoint: .leading, endPoint: .trailing))
-                        .frame(width: 44, height: 10)
-                    if bloccato {
-                        Image(systemName: "lock.fill")
-                            .font(.caption).foregroundStyle(.white.opacity(0.9))
-                            .padding(6)
-                            .background(.black.opacity(0.35), in: Circle())
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                            .padding(6)
-                    }
-                }
-                .frame(height: 54)
-                .overlay(RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(selezionato ? Theme.filo : Theme.border,
-                                  lineWidth: selezionato ? 2 : 1))
-                Text(t.nome)
-                    .font(.caption.weight(selezionato ? .bold : .regular))
-                    .foregroundStyle(selezionato ? Theme.text : Theme.textMuted)
+            Rectangle()
+                .fill(Theme.border.opacity(0.6))
+                .frame(height: 1)
+                .accessibilityHidden(true)
+
+            Toggle(isOn: $vibrazioneAttiva) {
+                voce(titolo: "Vibrazione", sottotitolo: "Feedback tattile durante il gioco.")
             }
+            .tint(Theme.filo)
+            .padding(.vertical, 14)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(selezionato ? String(localized: "\(t.nome), selezionato") : t.nome)
+        .padding(.horizontal, FiloMetrics.cardPadding)
+        .frame(maxWidth: .infinity)
+        .background(FiloCardBackground())
     }
 
-    // MARK: Suoni
-
-    private var suoniSezione: some View {
-        Toggle(isOn: $suoniAttivi) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Suoni").font(.body.weight(.semibold)).foregroundStyle(Theme.text)
-                Text("Un plin per ogni casella del filo.")
-                    .font(.caption).foregroundStyle(Theme.textMuted)
-            }
+    private func voce(titolo: LocalizedStringKey, sottotitolo: LocalizedStringKey) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(titolo)
+                .fontWeight(.semibold)
+                .filoFont(.body)
+                .foregroundStyle(Theme.text)
+            Text(sottotitolo)
+                .filoFont(.caption)
+                .foregroundStyle(Theme.textMuted)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .tint(Theme.filo)
-        .padding(16)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.border, lineWidth: 1))
     }
 
-    // MARK: Archivio
+    // MARK: Archivio (etichetta combinata: contiene "Archivio FILO" — UI test)
 
     private var archivioSezione: some View {
-        Button { mostraArchivio = true } label: {
-            HStack(spacing: 12) {
-                Text("🗂️").font(.title2)
+        Button {
+            FiloHaptics.light()
+            mostraArchivio = true
+        } label: {
+            HStack(spacing: 14) {
+                icona("square.grid.2x2")
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Archivio FILO").font(.body.weight(.semibold)).foregroundStyle(Theme.text)
-                    Text("Rigioca i puzzle passati").font(.caption).foregroundStyle(Theme.textMuted)
+                    Text("Archivio FILO")
+                        .fontWeight(.semibold)
+                        .filoFont(.body)
+                        .foregroundStyle(Theme.text)
+                    Text("Rigioca i puzzle passati")
+                        .filoFont(.caption)
+                        .foregroundStyle(Theme.textMuted)
                 }
-                Spacer()
-                Image(systemName: "chevron.right").foregroundStyle(Theme.textMuted)
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.textTertiary)
+                    .accessibilityHidden(true)
             }
-            .padding(16)
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.border, lineWidth: 1))
+            .padding(FiloMetrics.cardPadding)
+            .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
+            .background(FiloCardBackground())
+            .contentShape(RoundedRectangle(cornerRadius: FiloMetrics.cardRadius, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RigaImpostazioniStyle())
     }
 
     // MARK: Info
@@ -279,12 +287,44 @@ struct ProfileView: View {
     private var infoSezione: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("FILO — il puzzle quotidiano")
-                .font(.caption).foregroundStyle(Theme.textMuted)
+                .filoFont(.caption)
+                .foregroundStyle(Theme.textMuted)
             Text("Nessun tracciamento, gioca offline.")
-                .font(.caption).foregroundStyle(Theme.textMuted)
-            Link("Gioca sul web", destination: URL(string: "https://filo-game-liard.vercel.app")!)
-                .font(.caption).foregroundStyle(Theme.filo)
+                .filoFont(.caption)
+                .foregroundStyle(Theme.textTertiary)
+            Link(destination: URL(string: "https://filo-game-liard.vercel.app")!) {
+                HStack(spacing: 4) {
+                    Text("Gioca sul web")
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .accessibilityHidden(true)
+                }
+                .filoFont(.caption)
+                .foregroundStyle(Theme.filo)
+                .frame(minHeight: FiloMetrics.minTouch)
+                .contentShape(Rectangle())
+            }
         }
-        .padding(.top, 4)
+        .padding(.horizontal, 4)
+    }
+
+    // MARK: Helper
+
+    /// Icona SF Symbol della voce (decorativa), 20 pt medium in 32×32.
+    private func icona(_ nome: String) -> some View {
+        Image(systemName: nome)
+            .font(.system(size: 20, weight: .medium))
+            .foregroundStyle(Theme.filo)
+            .frame(width: 32, height: 32)
+            .accessibilityHidden(true)
+    }
+}
+
+/// Pressione di una riga delle impostazioni: leggera attenuazione.
+private struct RigaImpostazioniStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.7 : 1)
+            .animation(FiloMotion.press, value: configuration.isPressed)
     }
 }

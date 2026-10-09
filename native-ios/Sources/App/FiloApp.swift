@@ -14,19 +14,23 @@ struct FiloApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                MenuView()
+                // La Home anima la propria entrata quando l'intro si dissolve.
+                MenuView(entrata: !showIntro)
                     .environmentObject(viewModel)
                     .environmentObject(theme)
                     .environmentObject(store)
                     .environmentObject(account)
                 if showIntro {
                     IntroView {
-                        withAnimation(.easeInOut(duration: 0.45)) { showIntro = false }
+                        // Crossfade intro → Home: 0,3 s (spec §6.1).
+                        withAnimation(.easeInOut(duration: 0.3)) { showIntro = false }
                     }
                     .transition(.opacity)
                     .zIndex(1)
                 }
             }
+            .background(Theme.bg.ignoresSafeArea())
+            .preferredColorScheme(.dark)
         }
     }
 }

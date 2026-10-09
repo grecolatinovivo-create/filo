@@ -2,48 +2,70 @@ import SwiftUI
 import Combine
 import FiloCore
 
-/// Schermata principale (GIOCO, wireframe README §13.1) + navigazione a schede.
-/// Presentata dal MenuView in fullScreenCover; `onBack` torna al menu con la
-/// transizione a tessere (fallback: dismiss standard).
+/// PARTITA (REDESIGN_SPEC §6.3): header (indietro "Menu", "FILO #N", "?"),
+/// HUD, griglia, "Taglia il filo"; banner nuovo giorno, toast e dialog di
+/// conferma. Presentata dal MenuView in fullScreenCover; `onBack` torna al
+/// menu con il crossfade (fallback: dismiss standard).
 struct RootView: View {
     @EnvironmentObject private var vm: GameViewModel
     @EnvironmentObject private var theme: ThemeManager   // ridisegna al cambio tema
     @EnvironmentObject private var store: Store
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Ritorno al menu orchestrato dal presentatore (tessere + dismiss).
+    /// Ritorno al menu orchestrato dal presentatore (crossfade + dismiss).
     var onBack: (() -> Void)? = nil
 
     private let timerGiorno = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        ZStack(alignment: .top) {
-            SfondoTema()
+        GeometryReader { geo in
+            let margin = FiloMetrics.margin(forWidth: geo.size.width)
+            ZStack(alignment: .top) {
+                FiloBackground()
 
-            VStack(spacing: 0) {
-                header
-                ScrollView {
-                    VStack(spacing: 16) {
-                        HUDView()
-                        BoardView()
-                            .padding(.horizontal, 16)
-                            .frame(maxWidth: 420)
-                        strappaButton
-                            .padding(.top, 8)
-                        AdSlot(isPro: store.isPro)
+                VStack(spacing: 0) {
+                    header
+                        .padding(.horizontal, max(4, margin - 12))
+                    ScrollView {
+                        VStack(spacing: FiloMetrics.sectionGap) {
+                            HUDView()
+                                .frame(maxWidth: BoardMetrics.maxWidth)
+                            BoardView()
+                            tagliaButton
+                            AdSlot(isPro: store.isPro)
+                        }
+                        .padding(.horizontal, margin)
+                        .padding(.top, 8)
+                        .padding(.bottom, 32)
+                        .frame(maxWidth: 480)
+                        .frame(maxWidth: .infinity)
                     }
-                    .frame(maxWidth: 480)
-                    .frame(maxWidth: .infinity)
-                    .padding(.bottom, 32)
+                    .scrollBounceBehavior(.basedOnSize)   // niente rimbalzo se il contenuto sta a schermo
                 }
-                .scrollBounceBehavior(.basedOnSize)   // niente rimbalzo se il contenuto sta a schermo
-            }
 
-            if vm.showNuovoGiornoBanner { bannerNuovoGiorno }
+                // Contenitore dedicato: l'animazione riguarda solo il banner.
+                VStack(spacing: 0) {
+                    if vm.showNuovoGiornoBanner {
+                        bannerNuovoGiorno
+                            .padding(.horizontal, margin)
+                            .padding(.top, FiloMetrics.headerHeight + 4)
+                            .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .animation(reduceMotion ? FiloMotion.reduced : FiloMotion.screen, value: vm.showNuovoGiornoBanner)
+                .zIndex(1)
+            }
         }
         .overlay(alignment: .bottom) {
-            if let toast = vm.toast { ToastView(testo: toast) }
+            VStack(spacing: 0) {
+                if let toast = vm.toast { ToastView(testo: toast) }
+            }
+            .frame(maxWidth: .infinity)
+            .animation(reduceMotion ? FiloMotion.reduced : FiloMotion.screen, value: vm.toast)
+            .allowsHitTesting(false)   // il toast non blocca i tocchi sulla griglia
         }
         .sheet(item: $vm.scheda, onDismiss: { vm.onboardingChiuso() }) { scheda in
             switch scheda {
@@ -52,13 +74,14 @@ struct RootView: View {
             case .risultato: ResultView()
             case .statistiche: StatsView()
             case .profilo: ProfileView()
+            case .archivio: ArchiveView()
             }
         }
-        .confirmationDialog("Strappare il filo?",
+        .confirmationDialog("Tagliare questo filo?",
                             isPresented: $vm.showStrappoDialog,
                             titleVisibility: .visible) {
-            Button("Strappa", role: .destructive) { vm.confermaStrappo() }
-            Button("Continua", role: .cancel) {}
+            Button("Taglia il filo", role: .destructive) { vm.confermaStrappo() }
+            Button("Continua a giocare", role: .cancel) {}
         } message: {
             Text(vm.testoDialogStrappo)
         }
@@ -70,199 +93,153 @@ struct RootView: View {
         .preferredColorScheme(.dark)
     }
 
-    // MARK: Header
+    // MARK: Header (48 pt)
 
     private var header: some View {
-        HStack(spacing: 0) {
+        ZStack {
+            Text("FILO #\(vm.numero)")
+                .filoFont(.headerTitle)
+                .foregroundStyle(Theme.text)
+                .lineLimit(1)
+                .accessibilityAddTraits(.isHeader)
+                .padding(.horizontal, 56)
+
             HStack(spacing: 0) {
-                Button {
+                FiloIconButton(systemName: "chevron.left", label: "Menu") {
                     if let onBack { onBack() } else { dismiss() }
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(Theme.textMuted)
-                        .frame(width: 44, height: 44)
                 }
-                .accessibilityLabel("Menu")
-
-                Button {
+                Spacer(minLength: 0)
+                FiloIconButton(systemName: "questionmark.circle", label: "Come si gioca") {
                     vm.scheda = .comeSiGioca
-                } label: {
-                    Image(systemName: "questionmark.circle")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(Theme.textMuted)
-                        .frame(width: 44, height: 44)
                 }
-                .accessibilityLabel("Come si gioca")
-            }
-
-            Spacer()
-
-            if Theme.usaArte {
-                Image("LogoFilo")
-                    .resizable()
-                    .interpolation(.high)
-                    .scaledToFit()
-                    .frame(height: 30)
-                    .accessibilityLabel(Text("FILO"))
-                    .accessibilityRemoveTraits(.isImage)
-                    .accessibilityAddTraits(.isHeader)
-            } else {
-                Text("FILO")
-                    .font(.title2.weight(.heavy))
-                    .kerning(8)
-                    .foregroundStyle(Theme.text)
-                    .accessibilityAddTraits(.isHeader)
-            }
-
-            Spacer()
-
-            HStack(spacing: 0) {
-                Button {
-                    vm.scheda = .statistiche
-                } label: {
-                    Image(systemName: "chart.bar.fill")
-                        .font(.title3)
-                        .foregroundStyle(Theme.textMuted)
-                        .frame(width: 44, height: 44)
-                }
-                .accessibilityLabel("Statistiche")
-
-                Button {
-                    vm.scheda = .profilo
-                } label: {
-                    Image(systemName: store.isPro ? "person.crop.circle.badge.checkmark" : "person.crop.circle")
-                        .font(.title3)
-                        .foregroundStyle(store.isPro ? Theme.filo : Theme.textMuted)
-                        .frame(width: 44, height: 44)
-                }
-                .accessibilityLabel("Profilo e temi")
             }
         }
-        .padding(.horizontal, 8)
-        .frame(height: 56)
+        .frame(height: FiloMetrics.headerHeight)
         .frame(maxWidth: 480)
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: Azioni
 
-    private var strappaButton: some View {
-        Button("Strappa il filo") { vm.richiediStrappo() }
-            .buttonStyle(SecondaryButtonStyle(enabled: vm.strappaDisponibile))
+    private var tagliaButton: some View {
+        Button("Taglia il filo") { vm.richiediStrappo() }
+            .buttonStyle(DestructiveButtonStyle(enabled: vm.strappaDisponibile))
             .disabled(!vm.strappaDisponibile)
     }
 
     // MARK: Banner nuovo giorno (RF10)
 
     private var bannerNuovoGiorno: some View {
-        HStack(spacing: 12) {
-            Text("🧵 C'è un nuovo FILO!")
-                .font(.body.weight(.medium))
+        HStack(spacing: 8) {
+            Text("C'è un nuovo FILO.")
+                .filoFont(.body)
                 .foregroundStyle(Theme.text)
-            Button("Gioca") { vm.giocaNuovoGiorno() }
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(Theme.bg)
-                .padding(.vertical, 8)
-                .padding(.horizontal, 20)
-                .background(Theme.filoGradient, in: Capsule())
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
             Button {
-                vm.nascondiBanner()
+                FiloHaptics.light()
+                vm.giocaNuovoGiorno()
             } label: {
-                Image(systemName: "xmark")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.textMuted)
-                    .frame(width: 44, height: 44)
+                Text("Gioca")
+                    .filoFont(.button)
+                    .foregroundStyle(Theme.onGold)
+                    .padding(.horizontal, 20)
+                    .frame(minHeight: 36)
+                    .background(Capsule().fill(Theme.gold))
+                    .frame(minHeight: FiloMetrics.minTouch)
+                    .contentShape(Rectangle())
             }
-            .accessibilityLabel("Nascondi avviso")
+            .buttonStyle(.plain)
+            FiloIconButton(systemName: "xmark", label: "Nascondi avviso") {
+                vm.nascondiBanner()
+            }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, minHeight: 48)
-        .background(Theme.surface)
-        .overlay(alignment: .bottom) { Theme.border.frame(height: 1) }
-        .transition(.move(edge: .top))
+        .padding(.leading, 16)
+        .padding(.trailing, 4)
+        .padding(.vertical, 4)
+        .frame(maxWidth: 480, minHeight: FiloMetrics.headerHeight)
+        .background(FiloCardBackground(radius: 16, floating: true, fill: Theme.surfaceRaised))
     }
 }
 
-/// HUD: Somma del Giorno, riga Sarto/minimo, somma corrente, caselle, fili.
+/// HUD (spec §6.3), centrato. Ordine d'accessibilità INVARIATO per i test:
+/// obiettivo ("Somma del giorno: T") → Sarto ("Il Sarto ha usato…") →
+/// somma attuale / caselle → "Fili rimasti: n di 3" (sempre l'ultimo).
 struct HUDView: View {
     @EnvironmentObject private var vm: GameViewModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        VStack(spacing: 4) {
-            Text("Somma del Giorno")
-                .captionStyle()
-            Text("\(vm.puzzle.T)")
-                .font(.system(size: 48, weight: .bold, design: .monospaced))
+        VStack(spacing: 0) {
+            Text("Obiettivo")
+                .eyebrowStyle()
+            Text(verbatim: "\(vm.puzzle.T)")
+                .filoFont(.target)
                 .monospacedDigit()
-                .foregroundStyle(Theme.filoGradient)
-                .accessibilityLabel("Somma del giorno: \(vm.puzzle.T)")
-            Text("Il Sarto: \(vm.puzzle.lSarto) caselle · minimo \(vm.engine.caselleMinime)")
-                .captionStyle()
-                .accessibilityLabel("Il Sarto ha usato \(vm.puzzle.lSarto) caselle. Minimo teorico: \(vm.engine.caselleMinime)")
+                .foregroundStyle(Theme.gold)
+                .accessibilityLabel(Text("Somma del giorno: \(vm.puzzle.T)"))
+            Text("Sarto: \(vm.puzzle.lSarto) caselle")
+                .filoFont(.caption)
+                .foregroundStyle(Theme.textMuted)
+                .accessibilityLabel(Text("Il Sarto ha usato \(vm.puzzle.lSarto) caselle. Minimo teorico: \(vm.engine.caselleMinime)"))
 
-            HStack(alignment: .firstTextBaseline, spacing: 16) {
-                HStack(spacing: 4) {
-                    Text("Filo").captionStyle()
-                    Text("\(vm.engine.somma)")
-                        .font(.system(.body, design: .monospaced).weight(.semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(Theme.text)
-                }
-                HStack(spacing: 4) {
-                    Text("Caselle").captionStyle()
-                    Text("\(vm.engine.filo.count)")
-                        .font(.system(.body, design: .monospaced).weight(.semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(Theme.text)
-                }
-                filiRimastiView
-            }
-            .padding(.top, 8)
-        }
-        .padding(.top, 8)
-    }
-
-    private var filiRimastiView: some View {
-        HStack(spacing: 2) {
-            ForEach(0..<3, id: \.self) { i in
-                if i < vm.engine.fili.count, vm.engine.fili[i].esito != .vinto {
-                    HStack(spacing: 0) {
-                        Text("🧵").opacity(0.25)
-                        Text(emojiEsito(vm.engine.fili[i].esito)).font(.caption)
+            HStack(alignment: .bottom, spacing: 16) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Somma attuale")
+                        .filoFont(.caption)
+                        .foregroundStyle(Theme.textTertiary)
+                    HStack(alignment: .firstTextBaseline, spacing: 0) {
+                        Text(verbatim: "\(vm.engine.somma)")
+                            .filoFont(.currentSum)
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.text)
+                            .contentTransition(.numericText())
+                            .animation(reduceMotion ? nil : FiloMotion.numeric, value: vm.engine.somma)
+                        Text(verbatim: " / \(vm.puzzle.T)")
+                            .filoFont(.body)
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.textTertiary)
                     }
-                } else {
-                    Text("🧵")
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text("Somma attuale: \(vm.engine.somma) su \(vm.puzzle.T)"))
+
+                Spacer(minLength: 0)
+
+                VStack(alignment: .trailing, spacing: 8) {
+                    Text("\(vm.engine.filo.count) caselle")
+                        .filoFont(.caption)
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.textMuted)
+                        .contentTransition(.numericText())
+                        .animation(reduceMotion ? nil : FiloMotion.numeric, value: vm.engine.filo.count)
+                    ThreadsLeftIndicator(outcomes: vm.engine.fili.map(\.esito),
+                                         remaining: vm.engine.filiRimasti)
                 }
             }
+            .padding(.top, 16)
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Fili rimasti: \(vm.engine.filiRimasti) di 3")
-    }
-
-    private func emojiEsito(_ esito: EsitoFilo) -> String {
-        switch esito {
-        case .spezzato: return "💥"
-        case .annodato: return "🪢"
-        case .strappato: return "✂️"
-        case .vinto: return ""
-        }
+        .frame(maxWidth: .infinity)
     }
 }
 
-/// Toast pill riusato (UX §5.7), auto-dismiss gestito dal ViewModel.
+/// Toast (spec §6.3/§7: niente emoji né punti esclamativi), auto-dismiss
+/// gestito dal ViewModel. Fluttuante: surfaceRaised, bordo 1 pt, ombra 18 %.
 struct ToastView: View {
     let testo: String
 
     var body: some View {
         Text(testo)
-            .font(.subheadline.weight(.medium))
+            .filoFont(.body)
             .foregroundStyle(Theme.text)
+            .multilineTextAlignment(.center)
             .padding(.vertical, 12)
             .padding(.horizontal, 16)
-            .background(Theme.surface, in: Capsule())
-            .overlay(Capsule().strokeBorder(Theme.border, lineWidth: 1))
-            .shadow(color: .black.opacity(0.35), radius: 8, y: 2)
+            .background(
+                Capsule().fill(Theme.surfaceRaised)
+                    .shadow(color: .black.opacity(0.18), radius: 16, y: 6)
+            )
+            .overlay(Capsule().strokeBorder(Theme.stroke, lineWidth: 1))
             .padding(.bottom, 24)
             .padding(.horizontal, 24)
             .transition(.opacity)

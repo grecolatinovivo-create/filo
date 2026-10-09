@@ -6,6 +6,9 @@ import FiloCore
 /// Target crescenti (10, 25, 50, 100, poi +100 a livello), 3 vite. Ogni livello
 /// è un puzzle di `PracticeGenerator`. Non tocca statistiche né persistenza del
 /// gioco giornaliero; salva solo il record `filo.salitaBest`.
+/// Haptics d'esito (REDESIGN_SPEC §8): livello superato = success, vita persa
+/// = warning. Li emette QUESTO view model: la board va creata con
+/// `outcomeHaptics: false` per non duplicarli.
 @MainActor
 final class SalitaViewModel: ObservableObject {
     @Published private(set) var livello = 1
@@ -15,6 +18,9 @@ final class SalitaViewModel: ObservableObject {
     @Published private(set) var best: Int
     @Published private(set) var nuovoRecord = false
     @Published private(set) var toast: String?
+    /// Livello appena completato (l'obiettivo vira al colore success prima
+    /// del cambio livello). `nil` fuori dalla celebrazione.
+    @Published private(set) var livelloCompletato: Int?
 
     private let defaults = UserDefaults.standard
     private static let bestKey = "filo.salitaBest"
@@ -55,6 +61,9 @@ final class SalitaViewModel: ObservableObject {
 
     var target: Int { Self.target(perLivello: livello) }
 
+    /// L'obiettivo mostrato è in fase di celebrazione (colore success).
+    var celebra: Bool { livelloCompletato == livello }
+
     func gestisci(_ mossa: Mossa) {
         guard !gameOver else { return }
         switch mossa {
@@ -64,16 +73,19 @@ final class SalitaViewModel: ObservableObject {
         }
     }
 
+    /// "Ricomincia il filo": azzera il filo corrente, nessuna vita persa.
     func ripulisci() {
         guard !gameOver else { return }
         session.ripulisci()
     }
 
+    /// "Ricomincia la Salita": dal livello 1 con 3 vite.
     func riprova() {
         livello = 1
         vite = 3
         gameOver = false
         nuovoRecord = false
+        livelloCompletato = nil
         bestIniziale = best
         semeBase = UInt64.random(in: 1...UInt64(UInt32.max))
         nuovaSessione()
@@ -83,7 +95,9 @@ final class SalitaViewModel: ObservableObject {
 
     private func superaLivello() {
         session.blocca()
-        mostraToast(String(localized: "Livello superato!"))
+        livelloCompletato = livello
+        FiloHaptics.success()
+        mostraToast(String(localized: "Livello completato"))
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 700_000_000)
             guard !gameOver else { return }
@@ -98,12 +112,13 @@ final class SalitaViewModel: ObservableObject {
 
     private func perdiVita() {
         vite -= 1
+        FiloHaptics.warning()
         if vite <= 0 {
             vite = 0
             finePartita()
         } else {
             session.blocca()
-            mostraToast(String(localized: "Filo perso: una vita in meno."))
+            mostraToast(String(localized: "Hai perso una vita."))
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 500_000_000)
                 guard !gameOver else { return }
@@ -116,6 +131,8 @@ final class SalitaViewModel: ObservableObject {
     private func finePartita() {
         gameOver = true
         nuovoRecord = livello > bestIniziale
+        toastTask?.cancel()
+        toast = nil
         session.blocca()
         session.mostraSoluzione()
     }
@@ -129,6 +146,7 @@ final class SalitaViewModel: ObservableObject {
     private func mostraToast(_ t: String) {
         toastTask?.cancel()
         toast = t
+        AccessibilityNotification.Announcement(t).post()
         toastTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             if !Task.isCancelled { toast = nil }
@@ -139,6 +157,8 @@ final class SalitaViewModel: ObservableObject {
 struct SalitaView: View {
     @StateObject private var vm = SalitaViewModel()
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var mostraRegole = false
 
     /// Ritorno al menu orchestrato dal presentatore (transizione a tessere).
     /// Se assente, chiusura standard con dismiss.
@@ -149,151 +169,221 @@ struct SalitaView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .top) {
-            SfondoTema()
-
+        GeometryReader { geo in
+            let margine = FiloMetrics.margin(forWidth: geo.size.width)
             VStack(spacing: 0) {
                 header
-                ScrollView {
-                    VStack(spacing: 16) {
-                        hud
-                        PracticeBoardView(session: vm.session, onMove: vm.gestisci)
-                            .id(vm.livello)
-                            .padding(.horizontal, 16)
-                            .frame(maxWidth: 420)
-                        Button("Ripulisci il filo") { vm.ripulisci() }
+                    .padding(.horizontal, max(0, margine - 12))
+                ZStack {
+                    ScrollView {
+                        VStack(spacing: FiloMetrics.sectionGap) {
+                            hud
+                            board
+                            Button("Ricomincia il filo") {
+                                FiloHaptics.light()
+                                vm.ripulisci()
+                            }
                             .buttonStyle(SecondaryButtonStyle(enabled: !vm.gameOver))
                             .disabled(vm.gameOver)
-                            .padding(.top, 8)
+                        }
+                        .padding(.horizontal, margine)
+                        .padding(.top, FiloMetrics.relatedGap)
+                        .padding(.bottom, FiloMetrics.sectionGapLarge)
+                        .frame(maxWidth: 480)
+                        .frame(maxWidth: .infinity)
                     }
-                    .frame(maxWidth: 480)
-                    .frame(maxWidth: .infinity)
-                    .padding(.bottom, 32)
-                }
-                .scrollBounceBehavior(.basedOnSize)
-            }
+                    .scrollBounceBehavior(.basedOnSize)
 
-            if vm.gameOver { gameOverOverlay }
+                    if vm.gameOver {
+                        gameOverOverlay
+                            .transition(.opacity)
+                    }
+                }
+                .animation(.easeInOut(duration: reduceMotion ? FiloMotion.reducedDuration : 0.25),
+                           value: vm.gameOver)
+            }
         }
+        .background { FiloBackground() }
         .overlay(alignment: .bottom) {
-            if let toast = vm.toast, !vm.gameOver { ToastView(testo: toast) }
+            ZStack {
+                if let toast = vm.toast, !vm.gameOver {
+                    ToastView(testo: toast)
+                }
+            }
+            .animation(FiloMotion.adaptive(FiloMotion.screen, reduceMotion: reduceMotion), value: vm.toast)
         }
+        .sheet(isPresented: $mostraRegole) {
+            RegoleSalitaView()
+        }
+        .onAppear { FiloHaptics.prepare() }
         .preferredColorScheme(.dark)
     }
 
-    // MARK: Header
+    // MARK: Header (48 pt): chiudi · "Salita" · regole
 
     private var header: some View {
-        HStack {
-            Button {
-                chiudi()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(Theme.textMuted)
-                    .frame(width: 44, height: 44)
-            }
-            .accessibilityLabel("Chiudi")
-
-            Spacer()
+        ZStack {
             Text("Salita")
-                .font(.title2.weight(.heavy))
-                .kerning(6)
-                .foregroundStyle(Theme.text)
+                .filoFont(.headerTitle)
+                .foregroundStyle(Theme.textPrimary)
                 .accessibilityAddTraits(.isHeader)
-            Spacer()
-            Color.clear.frame(width: 44, height: 44)
+            HStack {
+                FiloIconButton(systemName: "xmark", label: "Chiudi") { chiudi() }
+                Spacer()
+                FiloIconButton(systemName: "questionmark.circle", label: "Come si gioca") {
+                    mostraRegole = true
+                }
+            }
         }
-        .padding(.horizontal, 8)
-        .frame(height: 56)
+        .frame(height: FiloMetrics.headerHeight)
         .frame(maxWidth: 480)
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: HUD
 
-    private var hud: some View {
-        VStack(spacing: 4) {
-            Text("Livello \(vm.livello)")
-                .captionStyle()
-            Text("\(vm.target)")
-                .font(.system(size: 48, weight: .bold, design: .monospaced))
-                .monospacedDigit()
-                .foregroundStyle(Theme.filoGradient)
-                .accessibilityLabel("Obiettivo: \(vm.target)")
-
-            HStack(alignment: .firstTextBaseline, spacing: 16) {
-                HStack(spacing: 4) {
-                    Text("Somma").captionStyle()
-                    Text("\(vm.session.somma)")
-                        .font(.system(.body, design: .monospaced).weight(.semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(Theme.text)
-                }
-                viteView
-            }
-            .padding(.top, 8)
-        }
-        .padding(.top, 8)
+    private var transizioneLivello: AnyTransition {
+        if reduceMotion { return .opacity }
+        return .asymmetric(
+            insertion: .offset(y: 12).combined(with: .opacity),
+            removal: .offset(y: -12).combined(with: .opacity))
     }
 
-    private var viteView: some View {
-        HStack(spacing: 3) {
-            ForEach(0..<3, id: \.self) { i in
-                if Theme.usaArte {
-                    IconaArte(tipo: .cuore, spenta: i >= vm.vite, lato: 20)
-                } else {
-                    Image(systemName: i < vm.vite ? "heart.fill" : "heart")
-                        .font(.subheadline)
-                        .foregroundStyle(i < vm.vite ? Theme.spezzato : Theme.textMuted)
+    private var hud: some View {
+        VStack(spacing: FiloMetrics.relatedGap) {
+            Text("Livello \(vm.livello)")
+                .eyebrowStyle()
+                .contentTransition(.numericText())
+                .animation(FiloMotion.adaptive(FiloMotion.level, reduceMotion: reduceMotion),
+                           value: vm.livello)
+
+            // Obiettivo: vira a success (0,25 s) quando il livello è
+            // completato, poi il vecchio numero sale di 12 pt e svanisce
+            // mentre il nuovo entra da +12 pt (0,30 s easeInOut).
+            ZStack {
+                Text(verbatim: "\(vm.target)")
+                    .filoFont(.target)
+                    .monospacedDigit()
+                    .foregroundStyle(vm.celebra ? Theme.success : Theme.gold)
+                    .animation(.easeOut(duration: 0.25), value: vm.celebra)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .accessibilityLabel(Text("Obiettivo: \(vm.target)"))
+                    .id(vm.livello)
+                    .transition(transizioneLivello)
+            }
+            .animation(FiloMotion.adaptive(FiloMotion.level, reduceMotion: reduceMotion), value: vm.livello)
+
+            sommaAttuale
+
+            HStack(spacing: FiloMetrics.relatedGap) {
+                LivesIndicator(lives: vm.vite)
+                Group {
+                    if vm.vite == 1 {
+                        Text("Ultima vita")
+                            .foregroundStyle(Theme.error)
+                    } else {
+                        Text("\(vm.vite) vite")
+                            .foregroundStyle(Theme.textSecondary)
+                    }
                 }
+                .filoFont(.caption)
+                .accessibilityHidden(true)   // già detto da "Vite rimaste: n di 3"
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var sommaAttuale: some View {
+        HStack(alignment: .firstTextBaseline, spacing: FiloMetrics.relatedGap) {
+            Text("Somma attuale")
+                .filoFont(.caption)
+                .foregroundStyle(Theme.textSecondary)
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(verbatim: "\(vm.session.somma)")
+                    .filoFont(.currentSum)
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.textPrimary)
+                    .contentTransition(.numericText())
+                    .animation(reduceMotion ? nil : FiloMotion.numeric, value: vm.session.somma)
+                Text(verbatim: "/ \(vm.target)")
+                    .filoFont(.body)
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.textTertiary)
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Vite rimaste: \(vm.vite) di 3")
+        .accessibilityLabel(Text("Somma attuale: \(vm.session.somma) di \(vm.target)"))
     }
 
-    // MARK: Game over
+    // MARK: Board (crossfade 0,22 s al cambio livello)
+
+    private var board: some View {
+        ZStack {
+            PracticeBoardView(session: vm.session, onMove: vm.gestisci, outcomeHaptics: false)
+                .id(vm.livello)
+                .transition(.opacity)
+        }
+        .frame(maxWidth: BoardMetrics.maxWidth)
+        .animation(.easeInOut(duration: reduceMotion ? FiloMotion.reducedDuration : 0.22), value: vm.livello)
+    }
+
+    // MARK: Fine partita
 
     private var gameOverOverlay: some View {
         ZStack {
-            Theme.overlay.ignoresSafeArea()
-            VStack(spacing: 16) {
-                Text("Game over")
-                    .font(.title2.weight(.heavy))
-                    .foregroundStyle(Theme.text)
-                Text("Sei arrivato al livello \(vm.livello)")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(Theme.filo)
-                    .multilineTextAlignment(.center)
-                if vm.nuovoRecord {
-                    Text("Nuovo record!")
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(Theme.ok)
-                } else {
-                    Text("Record: livello \(vm.best)")
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.textMuted)
+            Theme.overlay
+                .ignoresSafeArea(edges: .bottom)
+                .accessibilityHidden(true)
+            FiloCard(padding: FiloMetrics.cardPaddingLarge, floating: true, alignment: .center) {
+                VStack(spacing: FiloMetrics.relatedGapLarge) {
+                    VStack(spacing: FiloMetrics.relatedGap) {
+                        Text("La salita finisce qui.")
+                            .filoFont(.screenTitle)
+                            .foregroundStyle(Theme.textPrimary)
+                            .multilineTextAlignment(.center)
+                            .accessibilityAddTraits(.isHeader)
+                        Text("Hai raggiunto il livello \(vm.livello).")
+                            .filoFont(.body)
+                            .foregroundStyle(Theme.textSecondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    if vm.nuovoRecord {
+                        Chip("Nuovo record", systemImage: "arrow.up", tint: Theme.success, filled: true)
+                    } else {
+                        Text("Record: livello \(vm.best)")
+                            .filoFont(.caption)
+                            .foregroundStyle(Theme.textTertiary)
+                    }
+                    VStack(spacing: FiloMetrics.relatedGap) {
+                        Button("Ricomincia la Salita") {
+                            FiloHaptics.light()
+                            vm.riprova()
+                        }
+                        .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                        Button("Torna alla Home") { chiudi() }
+                            .buttonStyle(SecondaryButtonStyle(fullWidth: true))
+                    }
+                    .padding(.top, FiloMetrics.relatedGap)
                 }
-                Button("Riprova") { vm.riprova() }
-                    .buttonStyle(PrimaryButtonStyle())
-                    .padding(.top, 4)
-                Button("Chiudi") { chiudi() }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.textMuted)
+                .frame(maxWidth: .infinity)
             }
-            .padding(28)
             .frame(maxWidth: 360)
-            .background {
-                if Theme.usaArte {
-                    PannelloVelluto(raggio: 20, bordoOpacita: 0.8)
-                        .background(Theme.bg.opacity(0.6), in: RoundedRectangle(cornerRadius: 20))
-                } else {
-                    RoundedRectangle(cornerRadius: 20).fill(Theme.surface)
-                        .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Theme.border, lineWidth: 1))
-                }
-            }
-            .padding(24)
+            .padding(.horizontal, FiloMetrics.sectionGap)
         }
-        .transition(.opacity)
+    }
+}
+
+/// Regole aperte dal "?" della Salita: stessa guida di "Come si gioca", con
+/// una nota sulle vite e senza la CTA del daily (non richiede GameViewModel,
+/// che la Salita non riceve nell'environment).
+struct RegoleSalitaView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ComeSiGiocaContenuto(
+            nota: "Nella Salita ogni livello alza la somma. Hai tre vite: ogni filo spezzato o annodato ne costa una.",
+            onChiudi: { dismiss() }
+        )
     }
 }

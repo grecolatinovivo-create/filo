@@ -13,7 +13,7 @@ final class GameViewModel: ObservableObject {
     // MARK: Tipi
 
     enum Scheda: String, Identifiable {
-        case comeSiGioca, onboardingProgressivo, risultato, statistiche, profilo
+        case comeSiGioca, onboardingProgressivo, risultato, statistiche, profilo, archivio
         var id: String { rawValue }
     }
 
@@ -237,12 +237,9 @@ final class GameViewModel: ObservableObject {
         !engine.filo.isEmpty && !engine.gameOver && !lockInput
     }
 
-    /// Corpo del dialog strappo (NEURO_SPEC §2.3, plurale normativo).
+    /// Corpo del dialog "Tagliare questo filo?" (REDESIGN_SPEC §6.3/§7).
     var testoDialogStrappo: String {
-        let n = engine.filiRimasti - 1
-        if n == 0 { return String(localized: "È l'ultimo filo: strapparlo chiude la partita di oggi.") }
-        if n == 1 { return String(localized: "Un filo strappato non si ricuce: te ne resterà 1.") }
-        return String(localized: "Un filo strappato non si ricuce: te ne resteranno \(n).")
+        String(localized: "Perderai un tentativo. Non potrai riprendere il percorso.")
     }
 
     /// aria-label equivalente per VoiceOver (UX_SPEC §9.4).
@@ -338,7 +335,11 @@ final class GameViewModel: ObservableObject {
                        gold: res.gold, oggi: o)
         salvaStats()
         salvaOggi()
+        // Archivio (REDESIGN_SPEC §6.7): il FILO di oggi vinto resta
+        // "Completato" anche quando, da domani, compare fra i passati.
+        ArchivioCompletati.segna(numero)
         FiloHaptics.success()
+        mostraToast(String(localized: "Somma raggiunta"))
         let parole = res.gold ? String(localized: "Tre stelle, hai battuto il Sarto!")
             : (res.stelle == 3 ? String(localized: "Tre stelle")
                : res.stelle == 2 ? String(localized: "Due stelle") : String(localized: "Una stella"))
@@ -401,14 +402,28 @@ final class GameViewModel: ObservableObject {
         }
     }
 
-    /// Testi toast esito (NEURO_SPEC §2.3, plurale normativo).
+    /// Testi toast esito (REDESIGN_SPEC §7: niente emoji né punti
+    /// esclamativi). `somma` resta nella firma per compatibilità.
     func testoToastEsito(_ esito: EsitoFilo, somma: Int, n: Int) -> String {
-        let resto = (n == 1) ? String(localized: "Te ne resta 1.") : String(localized: "Te ne restano \(n).")
+        let resto = (n == 1) ? String(localized: "Ti resta un filo.")
+                             : String(localized: "Ti restano \(n) fili.")
+        let esitoTesto: String
         switch esito {
-        case .spezzato: return String(localized: "💥 Crack! \(somma) su \(puzzle.T): il filo non ha retto. \(resto)")
-        case .annodato: return String(localized: "🪢 Vicolo cieco a \(somma) su \(puzzle.T). \(resto)")
-        default: return String(localized: "✂️ Strappo netto. \(resto)")
+        case .spezzato: esitoTesto = String(localized: "Hai superato la somma. Il filo si è spezzato.")
+        case .annodato: esitoTesto = String(localized: "Non ci sono altre mosse. Il filo si è annodato.")
+        default: esitoTesto = String(localized: "Un filo in meno.")
         }
+        return esitoTesto + " " + resto
+    }
+
+    /// Home, FILO di oggi già concluso: "Rivedi il risultato" apre la scheda
+    /// risultato dal menu. Segna il risultato come mostrato, così la chiusura
+    /// della scheda (onboardingChiuso) non lo ripresenta.
+    func mostraRisultato() {
+        guard engine.gameOver else { return }
+        revealSarto = true
+        risultatoMostrato = true
+        scheda = .risultato
     }
 
     // MARK: Toast e annunci

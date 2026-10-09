@@ -62,8 +62,9 @@ final class PracticeSession: ObservableObject {
 }
 
 /// Griglia 5×5 interattiva riutilizzabile, guidata da una `PracticeSession`.
-/// Stessa gestualità tap+drag, stessa resa e STESSE misure (REDESIGN_SPEC §5,
-/// ROUND2 #1/#2/#7) della `BoardView` del giornaliero, ma disaccoppiata da
+/// Stessa gestualità tap+drag, stessa resa (filo di seta V3 con asole,
+/// `BoardThreadLayer`) e STESSE misure (REDESIGN_SPEC §5, ROUND2 #1/#2/#7)
+/// della `BoardView` del giornaliero, ma disaccoppiata da
 /// `GameViewModel`: ogni esito di mossa viene inoltrato al genitore via
 /// `onMove`. Haptics: selezione (throttled 90 ms) a ogni casella nuova; con
 /// `outcomeHaptics` (default true) anche success (somma esatta), error
@@ -83,8 +84,6 @@ struct PracticeBoardView: View {
     @State private var dragAttivo = false
     @State private var downSuUltima = false
     @State private var caselleAlDown = 0
-    @State private var popIdx: Int?
-    @State private var popScale: CGFloat = 1
     @State private var endScale: CGFloat = 1
     @State private var esitoLocale: EsitoLocale?
 
@@ -116,7 +115,6 @@ struct PracticeBoardView: View {
                     let o = BoardMetrics.origin(idx, side: side)
                     PracticeCellView(session: session, idx: idx, side: side)
                         .frame(width: side, height: side)
-                        .scaleEffect(popIdx == idx ? popScale : 1)
                         .offset(x: o.x, y: o.y)
                 }
                 BoardThreadLayer(side: side,
@@ -129,8 +127,7 @@ struct PracticeBoardView: View {
                     .id(esitoLocale?.id ?? 0)
                 // numeri SOPRA il filo (layer inerte)
                 BoardNumberLayer(side: side, valori: session.puzzle.valori,
-                                 filo: session.engine.filo,
-                                 popIdx: popIdx, popScale: popScale)
+                                 filo: session.engine.filo)
             }
             .frame(width: lato, height: lato, alignment: .topLeading)
             .contentShape(Rectangle())
@@ -151,7 +148,6 @@ struct PracticeBoardView: View {
         .onChange(of: ObjectIdentifier(session)) { _, _ in
             esitoLocale = nil
             endScale = 1
-            popIdx = nil
             aggiornaSoluzione(attivo: session.revealSolution, animato: false)
         }
         .onAppear {
@@ -162,19 +158,12 @@ struct PracticeBoardView: View {
         .accessibilityLabel("Griglia di gioco, 5 righe per 5 colonne")
     }
 
-    /// Nuova casella: selezione (throttled), prima casella con scale
-    /// 0,97 → 1. Il segmento nuovo lo cuce `BoardThreadLayer` (0,12 s).
+    /// Nuova casella: selezione (throttled). La presa (filo → ingresso →
+    /// asola, compressione 0,985 della tessera) la disegnano `FiloSeta` e
+    /// `TesseraArte`/`NumeroCella`.
     private func casellaAggiunta(vecchio: Int, nuovo: Int) {
         guard nuovo > vecchio else { return }
         if session.engine.stato == .inCorso { FiloHaptics.selection() }
-        if nuovo == 1, let primo = session.engine.filo.first, !reduceMotion {
-            popIdx = primo
-            popScale = 0.97
-            Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 16_000_000)
-                withAnimation(FiloMotion.tile) { popScale = 1 }
-            }
-        }
     }
 
     private func assesta() {

@@ -120,9 +120,10 @@ enum FiloFont {
     static func target(_ size: CGFloat = 64) -> Font { .system(size: size, weight: .bold, design: .rounded) }
     /// SF Rounded 30 semibold (somma attuale).
     static func currentSum() -> Font { FiloTextRole.currentSum.font }
-    /// SF Rounded medium per il numero di una tessera: lato × 0,42, 20…30 pt.
+    /// SF Rounded medium per il numero di una tessera (THREAD_V3 §2):
+    /// lato × 0,39, 20…28 pt (28 sulla tessera da 72).
     static func tile(side: CGFloat) -> Font {
-        .system(size: min(30, max(20, side * 0.42)), weight: .medium, design: .rounded)
+        .system(size: min(28, max(20, side * 0.39)), weight: .medium, design: .rounded)
     }
     /// SF Rounded 32 semibold (numeri delle statistiche).
     static func stat() -> Font { FiloTextRole.stat.font }
@@ -201,6 +202,29 @@ enum FiloMotion {
     static let starInterval: Double = 0.18
     /// Fade unico con Riduci Movimento.
     static let reduced = Animation.easeInOut(duration: 0.15)
+
+    // Filo V3 — "il filo prende la casella" (THREAD_V3_SPEC §3). Le fasi del
+    // filo sono disegnate dal Canvas di `FiloSeta` (TimelineView), queste
+    // sono le durate normative.
+    /// 0–60 ms: il filo raggiunge l'ingresso della casella (easeOut).
+    static let threadReachDuration: Double = 0.06
+    /// 60–200 ms: l'asola si forma attorno al numero (easeOut).
+    static let loopFormDuration: Double = 0.14
+    /// L'estremo precedente diventa intermedio: l'asola si riconfigura.
+    static let loopMorphDuration: Double = 0.10
+    /// Durata totale della presa (0,06 + 0,14, + margine della tensione).
+    static let takeDuration: Double = 0.24
+    /// 60–240 ms: la tessera reagisce alla tensione (scala 1 → 0,985 → 1).
+    static let tension = Animation.spring(response: 0.24, dampingFraction: 0.84)
+    static let tensionScale: CGFloat = 0.985
+    static let tensionDelay: Double = 0.06
+    /// Filo spezzato: i capi si separano (easeOut 0,16 s), poi dissolvenza.
+    static let frayDuration: Double = 0.16
+    /// Filo annodato: ricciolo terminale 270° in 0,20 s, resta 0,35 s.
+    static let knotDuration: Double = 0.20
+    static let knotHold: Double = 0.35
+    /// Riduci Movimento: solo cambio di colore + dissolvenza ≤ 0,12 s.
+    static let reducedFadeDuration: Double = 0.12
     /// Durate (s) utili per le sequenze temporizzate.
     static let screenDuration: Double = 0.24
     static let reducedDuration: Double = 0.15

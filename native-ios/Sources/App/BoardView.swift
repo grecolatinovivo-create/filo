@@ -90,13 +90,10 @@ struct BoardMetrics {
     }
 }
 
-/// Nodi del filo (ROUND3 #3): ANELLI attorno alla cifra, disegnati nel
-/// layer del filo (sopra la linea del filo, sotto i numeri), diametro
-/// lato × 0,62 (≈ 45 pt sulla tessera da 72).
-/// Partenza: anello oro 1,5 pt, senza riempimento.
-/// Estremo corrente: anello oro 2,5 pt + riempimento oro @ 0,14; quando si
-/// sposta si assesta con `FiloMotion.node` (spring 0,24/0,78, lo applica il
-/// layer). `contrazione` (vicolo cieco: 3) riduce il raggio.
+/// STORICO (ROUND3 #3): anelli attorno alla cifra. Il filo V3 li ha
+/// sostituiti con i punti terminali disegnati da `FiloSeta` (partenza 7 pt,
+/// estremo 10 pt sul fianco dell'asola): nessuna board li usa più. Resta per
+/// compatibilità di API.
 struct FiloNodo: View {
     enum Tipo { case partenza, estremo }
     let tipo: Tipo
@@ -135,16 +132,15 @@ struct FiloNodo: View {
     }
 }
 
-/// Layer FILO della board (sopra le tessere, sotto i numeri): percorso del
-/// Sarto tratteggiato 2 pt (sotto), filo d'esito in dissolvenza, filo
-/// corrente come UN solo tracciato continuo centro-centro (spessore
-/// `Arte.spessoreFilo(side)`) che si cuce da sé (solo il segmento nuovo si
-/// anima, 0,12 s easeOut), anello di partenza (da 2 caselle) e anello
-/// estremo (da 1 casella; spring 0,24/0,78 quando si sposta). Inerte e
-/// nascosto all'accessibilità.
-/// `trim` è mantenuto per compatibilità ma ignorato: l'animazione del
-/// segmento è interna (`CordaProgressiva`), così nessun chiamante può
-/// rianimare i segmenti già tracciati.
+/// Layer FILO della board (sopra le tessere, sotto i numeri) — THREAD_V3:
+/// percorso del Sarto tratteggiato 2 pt lungo le stesse asole (sotto), filo
+/// d'esito con il suo effetto terminale (`FiloSetaEsito`), e il filo
+/// corrente: seta a due capi in UN solo Canvas (`FiloSeta`) che avvolge ogni
+/// numero preso con un'asola, punto di partenza 7 pt e punto estremo 10 pt.
+/// La presa di una tessera anima solo l'ultima asola (0,06 s + 0,14 s) e
+/// riconfigura quella precedente (0,10 s). Inerte e nascosto
+/// all'accessibilità. `trim` è mantenuto per compatibilità ma ignorato.
+/// `endScale` scala il punto estremo (somma esatta 1 → 1,08 → 1).
 struct BoardThreadLayer: View {
     let side: CGFloat
     let filo: [Int]
@@ -152,12 +148,11 @@ struct BoardThreadLayer: View {
     /// Percorso del Sarto (vuoto = nessun reveal).
     var sarto: [Int] = []
     var sartoTrim: CGFloat = 1
-    /// Scala del nodo finale (somma esatta: 1 → 1,08 → 1).
+    /// Scala del punto estremo (somma esatta: 1 → 1,08 → 1).
     var endScale: CGFloat = 1
     /// Filo appena perso (spezzato/annodato/strappato) da mostrare in uscita.
     var esitoPercorso: [Int]? = nil
     var esito: EsitoFilo? = nil
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(side: CGFloat, filo: [Int], trim: CGFloat = 1, sarto: [Int] = [],
          sartoTrim: CGFloat = 1, endScale: CGFloat = 1,
@@ -177,7 +172,7 @@ struct BoardThreadLayer: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             if sarto.count >= 2 {
-                PolylineShape(points: sarto.map(c))
+                FiloAsole(centri: sarto.map(c), lato: side)
                     .trim(from: 0, to: sartoTrim)
                     .stroke(Theme.sarto,
                             style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round, dash: [5, 5]))
@@ -185,33 +180,19 @@ struct BoardThreadLayer: View {
             if let esitoPercorso, let esito, !esitoPercorso.isEmpty {
                 EsitoFiloOverlay(punti: esitoPercorso.map(c), esito: esito, side: side)
             }
-            // filo corrente: un solo Path, sempre presente (anche vuoto) così
-            // lo stato dell'animazione del segmento resta stabile
-            CordaProgressiva(punti: filo.map(c), lato: side)
-            // con una sola casella si vede solo l'anello estremo
-            if filo.count >= 2, let primo = filo.first {
-                FiloNodo(tipo: .partenza, side: side)
-                    .position(c(primo))
-            }
-            ZStack(alignment: .topLeading) {
-                if let ultimo = filo.last {
-                    FiloNodo(tipo: .estremo, side: side)
-                        .scaleEffect(endScale)
-                        .position(c(ultimo))
-                        .transition(reduceMotion ? AnyTransition.opacity
-                                    : AnyTransition.scale(scale: 0.6).combined(with: .opacity))
-                }
-            }
-            .animation(reduceMotion ? FiloMotion.reduced : FiloMotion.node,
-                       value: filo.last ?? -1)
+            // filo corrente: un solo Canvas, sempre presente (anche vuoto) così
+            // lo stato della presa resta stabile
+            FiloSeta(centri: filo.map(c), lato: side, scalaEstremo: endScale)
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
 }
 
-/// Layer NUMERI (sopra il filo): cifre a contorno (`NumeroCella`, nessuna
-/// maschera). Inerte e nascosto all'accessibilità.
+/// Layer NUMERI (sopra il filo): cifre bianche SENZA alone né disco — le
+/// asole del filo V3 le lasciano libere. Inerte e nascosto all'accessibilità.
+/// `popIdx`/`popScale`: scala opzionale di una cifra (compatibilità); la
+/// compressione della presa è già in `NumeroCella`.
 struct BoardNumberLayer: View {
     let side: CGFloat
     let valori: [Int]
@@ -224,7 +205,7 @@ struct BoardNumberLayer: View {
             ForEach(0..<25, id: \.self) { idx in
                 let acceso = filo.contains(idx)
                 let o = BoardMetrics.origin(idx, side: side)
-                NumeroCella(valore: idx < valori.count ? valori[idx] : 0, accesa: acceso)
+                NumeroCella(valore: idx < valori.count ? valori[idx] : 0, accesa: acceso, alone: false)
                     .frame(width: side, height: side)
                     .scaleEffect(popIdx == idx ? popScale : 1)
                     .animation(.easeInOut(duration: 0.16), value: acceso)
@@ -236,74 +217,32 @@ struct BoardNumberLayer: View {
     }
 }
 
-/// Filo appena perso (spec §5): spezzato = l'ultimo segmento perde tensione
-/// e svanisce (0,24 s easeIn), annodato = il nodo finale si contrae di 3 pt
-/// (spring 0,28/0,85), strappato = dissolvenza 0,30 s easeIn. Con Riduci
-/// Movimento: solo dissolvenza. Deve finire entro la durata dell'esito.
+/// Filo appena perso (THREAD_V3 §3), stessa seta del filo corrente:
+/// spezzato = i due capi si aprono e la punta arretra, poi dissolvenza;
+/// annodato = ricciolo terminale Ø 12 pt (270°), poi dissolvenza;
+/// strappato = dissolvenza 0,30 s. Riduci Movimento: solo colore +
+/// dissolvenza 0,12 s. Finisce entro la durata dell'esito (0,7/0,6/0,35 s).
+/// API invariata (`punti` = centri delle tessere del filo perso).
 struct EsitoFiloOverlay: View {
     let punti: [CGPoint]
     let esito: EsitoFilo
     let side: CGFloat
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var opacita = 1.0
-    @State private var codaOpacita = 1.0
-    @State private var allentamento: CGFloat = 0
-    @State private var contrazione: CGFloat = 0
-
-    private var corpo: [CGPoint] {
-        if esito == .spezzato && punti.count >= 2 { return Array(punti.dropLast()) }
-        return punti
-    }
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            if corpo.count >= 2 {
-                CordaOro(punti: corpo, lato: side)
-            }
-            if esito == .spezzato, punti.count >= 2 {
-                SegmentoAllentato(da: punti[punti.count - 2], a: punti[punti.count - 1],
-                                  freccia: side * 0.3, allentamento: allentamento)
-                    .stroke(Theme.spezzato,
-                            style: StrokeStyle(lineWidth: Arte.spessoreFilo(side), lineCap: .round, lineJoin: .round))
-                    .opacity(codaOpacita)
-            }
-            if corpo.count >= 2, let primo = corpo.first {
-                FiloNodo(tipo: .partenza, side: side).position(primo)
-            }
-            if let ultimo = corpo.last {
-                FiloNodo(tipo: .estremo, side: side,
-                         colore: esito == .annodato ? Theme.annodato : Theme.filo,
-                         contrazione: contrazione)
-                    .position(ultimo)
-            }
-        }
-        .opacity(opacita)
-        .onAppear(perform: avvia)
+        FiloSetaEsito(centri: punti, lato: side, esito: visivo)
     }
 
-    private func avvia() {
-        if reduceMotion {
-            withAnimation(FiloMotion.reduced) { opacita = 0 }
-            return
-        }
+    private var visivo: FiloSetaEsito.EsitoFiloVisivo {
         switch esito {
-        case .spezzato:
-            withAnimation(FiloMotion.slack) {
-                allentamento = 1
-                codaOpacita = 0
-            }
-            withAnimation(.easeIn(duration: 0.34).delay(0.24)) { opacita = 0 }
-        case .annodato:
-            withAnimation(FiloMotion.contract) { contrazione = 3 }
-            withAnimation(.easeIn(duration: 0.3).delay(0.22)) { opacita = 0 }
-        default:
-            withAnimation(FiloMotion.cut) { opacita = 0 }
+        case .spezzato: return .spezzato
+        case .annodato: return .annodato
+        default: return .dissolvenza
         }
     }
 }
 
-/// Segmento che "perde tensione": curva quadratica con freccia animabile,
-/// verso il basso (o verso destra se il segmento è verticale).
+/// STORICO: segmento che "perde tensione" (esito spezzato prima del filo
+/// V3). Non più usato dalle board; resta per compatibilità.
 struct SegmentoAllentato: Shape {
     var da: CGPoint
     var a: CGPoint
@@ -331,7 +270,8 @@ struct SegmentoAllentato: Shape {
 
 // MARK: - Board del giornaliero
 
-/// Griglia 5×5 del FILO di oggi: tessere → filo (+ nodi) → numeri a contorno.
+/// Griglia 5×5 del FILO di oggi: tessere → filo di seta (asole + punti
+/// terminali) → numeri bianchi senza alone.
 /// Input tap + drag via DragGesture(minimumDistance: 0) — semantica
 /// README §6.2/§6.6 invariata. Haptics: selezione (throttled 90 ms) a ogni
 /// casella nuova; gli esiti (success/error/warning/medium) li emette
@@ -354,8 +294,6 @@ struct BoardView: View {
     @State private var downSuUltima = false
     @State private var caselleAlDown = 0
     @State private var casellaDown: Int?
-    @State private var popIdx: Int?
-    @State private var popScale: CGFloat = 1
     @State private var endScale: CGFloat = 1
 
     init(maxSide: CGFloat? = nil) {
@@ -373,7 +311,6 @@ struct BoardView: View {
                     let o = BoardMetrics.origin(idx, side: side)
                     CellView(idx: idx, side: side)
                         .frame(width: side, height: side)
-                        .scaleEffect(popIdx == idx ? popScale : 1)
                         .offset(x: o.x, y: o.y)
                 }
                 BoardThreadLayer(side: side,
@@ -385,8 +322,7 @@ struct BoardView: View {
                                  esito: vm.esitoVisuale?.esito)
                 // numeri SOPRA il filo (layer inerte: tocchi e
                 // accessibilità restano sulle CellView sotto)
-                BoardNumberLayer(side: side, valori: vm.puzzle.valori, filo: vm.engine.filo,
-                                 popIdx: popIdx, popScale: popScale)
+                BoardNumberLayer(side: side, valori: vm.puzzle.valori, filo: vm.engine.filo)
             }
             // Le caselle sono posizionate con .offset (spostamento SOLO visivo):
             // senza un frame esplicito la ZStack resterebbe grande una casella e
@@ -418,22 +354,15 @@ struct BoardView: View {
         .accessibilityLabel("Griglia di gioco, 5 righe per 5 colonne")
     }
 
-    /// Nuova casella: selezione (throttled), prima casella con scale
-    /// 0,97 → 1. Il segmento nuovo lo cuce `BoardThreadLayer` (0,12 s).
+    /// Nuova casella: selezione (throttled). La presa (filo → ingresso →
+    /// asola, compressione 0,985 della tessera) la disegnano `FiloSeta` e
+    /// `TesseraArte`/`NumeroCella`.
     private func casellaAggiunta(vecchio: Int, nuovo: Int) {
         guard nuovo > vecchio else { return }
         if vm.engine.stato == .inCorso { FiloHaptics.selection() }
-        if nuovo == 1, let primo = vm.engine.filo.first, !reduceMotion {
-            popIdx = primo
-            popScale = 0.97
-            Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 16_000_000)
-                withAnimation(FiloMotion.tile) { popScale = 1 }
-            }
-        }
     }
 
-    /// Somma esatta: il nodo finale si assesta 1 → 1,08 → 1.
+    /// Somma esatta: il punto estremo si assesta 1 → 1,08 → 1.
     private func assesta() {
         guard !reduceMotion else { return }
         withAnimation(FiloMotion.settle) { endScale = 1.08 }

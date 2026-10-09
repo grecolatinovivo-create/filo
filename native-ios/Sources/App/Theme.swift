@@ -212,6 +212,22 @@ enum Theme {
     static var bgGradient: LinearGradient { current.bgGradient }
     static var filoGradient: LinearGradient { current.filoGradient }
     static var cellaAccesa: LinearGradient { current.cellaAccesa }
+
+    // Filo di seta a due capi (THREAD_V3_SPEC §1). Fissi: il filo è sempre oro.
+    /// #B98954 — corpo del filo (5,2 pt sulla tessera da 72).
+    static let silkBody = Color(hexRGB: 0xB98954)
+    /// #F3D79E — capo illuminato (1,6 pt) e riflesso satinato.
+    static let silkLit = Color(hexRGB: 0xF3D79E)
+    /// #9C7040 — capo in ombra (1,6 pt).
+    static let silkShadow = Color(hexRGB: 0x9C7040)
+    /// #030713 — ombra di contatto del filo (@ 25 %, blur 2, y +1,5).
+    static let silkContactShadow = Color(hexRGB: 0x030713)
+    /// Microfibre chiare / scure (@ 22 %).
+    static let silkFibreLight = Color(hexRGB: 0xFFF1CF)
+    static let silkFibreDark = Color(hexRGB: 0x50321A)
+    /// Punti terminali (partenza 7 pt, estremo 10 pt): oro #E8C27C + riflesso.
+    static let silkDot = Color(hexRGB: 0xE8C27C)
+    static let silkDotHighlight = Color(hexRGB: 0xFFF6DE)
 }
 
 extension Color {

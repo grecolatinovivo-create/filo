@@ -203,16 +203,15 @@ extension PassoGuida where Extra == EmptyView {
 }
 
 /// Demo 3×3 (≈ 192 pt, dati fissi — MAI dal generatore) con il look delle
-/// board 2.0: tessere piatte, filo d'oro sotto i numeri mascherati, nodi.
-/// Il filo entra casella per casella (0,30 s a segmento), poi "14 = 14" in
-/// success. Si gioca UNA volta; "Rivedi esempio" la ripete. Riduci
-/// Movimento: stato finale, senza animazione.
+/// board: tessere piatte, filo di seta V3 (`FiloSeta`: asole attorno ai
+/// numeri, punti terminali) e numeri senza alone.
+/// Il filo prende una casella alla volta (presa 0,24 s, una ogni 0,42 s),
+/// poi "14 = 14" in success. Si gioca UNA volta; "Rivedi esempio" la ripete.
+/// Riduci Movimento: stato finale, senza animazione.
 private struct DemoView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Caselle accese (0…4).
     @State private var passo = 0
-    /// Porzione disegnata del filo (3 segmenti di uguale lunghezza).
-    @State private var trim: CGFloat = 0
     @State private var completato = false
     @State private var giro = 0
 
@@ -275,15 +274,8 @@ private struct DemoView: View {
                     .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: acceso(i))
                     .offset(x: o.x, y: o.y)
             }
-            // 2. filo + nodi
-            if passo >= 1 {
-                CordaOro(punti: percorso.map(centro), trim: trim)
-                FiloNodo(tipo: .partenza, side: lato)
-                    .position(centro(percorso[0]))
-                FiloNodo(tipo: .estremo, side: lato)
-                    .position(centro(percorso[min(passo, percorso.count) - 1]))
-                    .animation(reduceMotion ? nil : FiloMotion.segment, value: passo)
-            }
+            // 2. filo di seta (asole + punti terminali), anima da sé ogni presa
+            FiloSeta(centri: percorso.prefix(passo).map(centro), lato: lato)
             // 3. numeri SOPRA il filo
             ForEach(0..<9, id: \.self) { i in
                 let o = origine(i)
@@ -320,7 +312,6 @@ private struct DemoView: View {
         t.disablesAnimations = true
         withTransaction(t) {
             passo = percorso.count
-            trim = 1
             completato = true
         }
     }
@@ -337,7 +328,6 @@ private struct DemoView: View {
         t.disablesAnimations = true
         withTransaction(t) {
             passo = 0
-            trim = 0
             completato = false
         }
         try? await Task.sleep(nanoseconds: 450_000_000)
@@ -346,13 +336,8 @@ private struct DemoView: View {
         try? await Task.sleep(nanoseconds: 350_000_000)
         for k in 2...percorso.count {
             guard !Task.isCancelled else { return }
-            withAnimation(.easeInOut(duration: 0.30)) {
-                trim = CGFloat(k - 1) / CGFloat(percorso.count - 1)
-            }
-            try? await Task.sleep(nanoseconds: 300_000_000)
-            guard !Task.isCancelled else { return }
             passo = k
-            try? await Task.sleep(nanoseconds: 120_000_000)
+            try? await Task.sleep(nanoseconds: 420_000_000)
         }
         guard !Task.isCancelled else { return }
         try? await Task.sleep(nanoseconds: 200_000_000)

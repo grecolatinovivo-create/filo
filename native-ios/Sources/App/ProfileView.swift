@@ -25,7 +25,6 @@ struct ProfileView: View {
                     header
                     if AppConfig.appleSignInEnabled { accessoSezione } else { gratisSezione }
                     if mostraStrumentiAdmin { testerSezione }
-                    temiSezione
                     suoniSezione
                     archivioSezione
                     infoSezione

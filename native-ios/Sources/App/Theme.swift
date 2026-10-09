@@ -136,16 +136,18 @@ final class ThemeManager: ObservableObject {
     private static let key = "filo.theme"
 
     init() {
-        let saved = UserDefaults.standard.string(forKey: Self.key)
-        let start = saved.flatMap(ThemeID.init(rawValue:)) ?? .notte
-        id = start
-        Theme.current = start.palette
+        // Dalla 1.1.0 l'identita' visiva e' UNA sola: il kit grafico "velluto
+        // blu-notte + filo d'oro" (tema `notte`). I vecchi temi colore restano
+        // nel codice ma non sono piu' selezionabili: chi ne aveva scelto uno
+        // viene riportato a `notte` (migrazione una tantum, idempotente).
+        id = .notte
+        Theme.current = ThemeID.notte.palette
+        UserDefaults.standard.set(ThemeID.notte.rawValue, forKey: Self.key)
     }
 
-    /// Sceglie un tema solo se sbloccato (i premium richiedono l'acquisto).
+    /// Selezione temi disattivata: un solo look. Mantenuta per compatibilita'.
     func seleziona(_ nuovo: ThemeID, sbloccato: Bool) {
-        guard !nuovo.premium || sbloccato else { return }
-        id = nuovo
+        id = .notte
     }
 }
 

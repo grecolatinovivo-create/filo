@@ -80,12 +80,46 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.grecolatinovivo.filo.coretests
         GENERATE_INFOPLIST_FILE: YES
 
+  # UI test (XCUITest) per gli SCREENSHOT App Store, lanciato SOLO dal
+  # workflow manuale screenshots-ios.yml. I sorgenti di FiloCore sono compilati
+  # DENTRO il bundle di test (nessun framework da incorporare nel runner): il
+  # test calcola il puzzle del giorno e il percorso del Sarto con lo stesso
+  # generatore dell'app. Non tocca il binario dell'app né la build di check.
+  FILOUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+      - path: Sources/FiloCore
+    dependencies:
+      - target: FILO
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.grecolatinovivo.filo.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: FILO
+        TARGETED_DEVICE_FAMILY: "1"
+
 schemes:
   FILO:
     build:
       targets:
         FILO: all
         FiloCoreTests: [test]
+        FILOUITests: [test]
     test:
       targets:
         - FiloCoreTests
+        - FILOUITests
+
+  # Scheme dedicato agli screenshot: solo app + UI test, così il workflow
+  # screenshots-ios.yml non dipende dalla compilazione degli altri test.
+  FILOScreenshots:
+    build:
+      targets:
+        FILO: all
+        FILOUITests: [test]
+    test:
+      config: Debug
+      targets:
+        - FILOUITests

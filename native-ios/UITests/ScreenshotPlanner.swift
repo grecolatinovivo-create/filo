@@ -137,6 +137,152 @@ enum ScreenshotPlanner {
         return migliore
     }
 
+    // MARK: Risoluzione dai valori letti a schermo (non dipende da data/fuso)
+
+    /// True se il percorso, giocato sul motore REALE (GameEngine), vince:
+    /// prefissi "iniziato/esteso" e ultima mossa "vittoria".
+    static func vince(_ percorso: [Int], valori: [Int], somma T: Int) -> Bool {
+        guard !percorso.isEmpty, valori.count == 25, T > 0 else { return false }
+        var engine = GameEngine(valori: valori, T: T)
+        for (i, idx) in percorso.enumerated() {
+            let m = engine.gioca(idx)
+            if i < percorso.count - 1 {
+                guard m == .iniziato || m == .esteso else { return false }
+            } else {
+                return m == .vittoria
+            }
+        }
+        return false
+    }
+
+    /// Percorso ortogonale auto-evitante con somma ESATTA `T`, il più LUNGO
+    /// trovato entro `secondi` (DFS con vicini in ordine di valore crescente,
+    /// potatura per raggiungibilità: somma massima e numero di caselle ancora
+    /// raggiungibili). Si ferma prima se raggiunge `lunghezzaObiettivo`.
+    static func percorsoMigliore(somma T: Int, valori: [Int],
+                                 lunghezzaObiettivo: Int = 25,
+                                 secondi: TimeInterval = 4) -> [Int]? {
+        guard valori.count == 25, T > 0, valori.allSatisfy({ $0 >= 1 }) else { return nil }
+        let scadenza = Date().addingTimeInterval(secondi)
+        let obiettivo = min(25, max(1, lunghezzaObiettivo))
+        var migliore: [Int] = []
+        var cammino: [Int] = []
+        var usate = [Bool](repeating: false, count: 25)
+        var nodi = 0
+        var stop = false
+
+        let vicini: [[Int]] = (0..<25).map { i in
+            let r = i / 5, c = i % 5
+            var n: [Int] = []
+            if r > 0 { n.append(i - 5) }
+            if c < 4 { n.append(i + 1) }
+            if r < 4 { n.append(i + 5) }
+            if c > 0 { n.append(i - 1) }
+            return n.sorted { valori[$0] < valori[$1] }
+        }
+
+        /// Caselle libere raggiungibili dall'ultima (flood fill): limite
+        /// superiore della somma e della lunghezza ancora ottenibili.
+        func raggiungibili(da i: Int) -> (somma: Int, caselle: Int) {
+            var visto = usate
+            var coda = [i]
+            var somma = 0, caselle = 0
+            var k = 0
+            while k < coda.count {
+                let x = coda[k]; k += 1
+                for n in vicini[x] where !visto[n] {
+                    visto[n] = true
+                    somma += valori[n]
+                    caselle += 1
+                    coda.append(n)
+                }
+            }
+            return (somma, caselle)
+        }
+
+        func esplora(_ i: Int, _ somma: Int) {
+            if stop { return }
+            nodi += 1
+            if nodi & 1023 == 0, Date() >= scadenza { stop = true; return }
+            cammino.append(i)
+            usate[i] = true
+            defer { cammino.removeLast(); usate[i] = false }
+            if somma == T {
+                if cammino.count > migliore.count {
+                    migliore = cammino
+                    if migliore.count >= obiettivo { stop = true }
+                }
+                return
+            }
+            let resto = raggiungibili(da: i)
+            if somma + resto.somma < T { return }
+            if cammino.count + resto.caselle <= migliore.count { return }
+            for n in vicini[i] where !usate[n] && somma + valori[n] <= T {
+                esplora(n, somma + valori[n])
+                if stop { return }
+            }
+        }
+
+        let partenze = (0..<25).sorted { valori[$0] < valori[$1] }
+        for s in partenze where valori[s] <= T {
+            esplora(s, valori[s])
+            if stop { break }
+        }
+        return migliore.isEmpty ? nil : migliore
+    }
+
+    /// Piano per il FILO del giorno a partire da ciò che si vede: valori e
+    /// Somma letti a schermo. Se i valori coincidono col generatore del giorno
+    /// (oggi/ieri/domani) il percorso del Sarto è il ripiego garantito
+    /// (3 stelle); in ogni caso si cerca un percorso più lungo (🥇) dai valori.
+    static func pianoDaily(valori: [Int], somma T: Int?, lSarto: Int?,
+                           adesso: Date = Date(), calendar: Calendar = .current,
+                           secondi: TimeInterval = 4) -> (percorso: [Int], somma: Int, fonte: String)? {
+        var sarto: [Int]?
+        var Tok = T
+        var L = lSarto
+        if let daily = puzzleDelGiorno(valoriMostrati: valori, adesso: adesso, calendar: calendar),
+           T == nil || T == daily.puzzle.T {
+            sarto = daily.puzzle.percorsoSarto
+            Tok = daily.puzzle.T
+            L = L ?? daily.puzzle.lSarto
+        }
+        guard let somma = Tok else { return nil }
+        let obiettivo = (L ?? 20) + 3
+        let trovato = percorsoMigliore(somma: somma, valori: valori,
+                                       lunghezzaObiettivo: obiettivo, secondi: secondi)
+        if let t = trovato, vince(t, valori: valori, somma: somma),
+           t.count > (sarto?.count ?? 0) {
+            return (t, somma, "DFS sui valori a schermo (\(t.count) caselle)")
+        }
+        if let s = sarto, vince(s, valori: valori, somma: somma) {
+            return (s, somma, "percorso del Sarto dal generatore (\(s.count) caselle)")
+        }
+        if let t = trovato, vince(t, valori: valori, somma: somma) {
+            return (t, somma, "DFS sui valori a schermo (\(t.count) caselle)")
+        }
+        return nil
+    }
+
+    /// Primo numero intero di un'etichetta che inizia con `prefisso`
+    /// (confronto senza maiuscole/minuscole).
+    static func numero(dopo prefisso: String, in etichette: [String]) -> Int? {
+        let p = prefisso.lowercased()
+        for e in etichette where e.lowercased().hasPrefix(p) {
+            let resto = e.dropFirst(prefisso.count)
+            let cifre = resto.drop { !($0.isASCII && $0.isNumber) }.prefix { $0.isASCII && $0.isNumber }
+            if let n = Int(cifre) { return n }
+        }
+        return nil
+    }
+
+    /// Griglia 5×5 leggibile nei log.
+    static func testoGriglia(_ valori: [Int]) -> String {
+        stride(from: 0, to: valori.count, by: 5).map { r in
+            valori[r..<min(r + 5, valori.count)].map { String(format: "%3d", $0) }.joined()
+        }.joined(separator: "\n")
+    }
+
     /// Centro della casella `idx` in coordinate schermo, dato il frame della
     /// griglia: stessa geometria di BoardView/PracticeBoardView (5 colonne,
     /// gap 6 pt, lato = (larghezza − 4·gap) / 5).

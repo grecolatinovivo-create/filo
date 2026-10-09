@@ -6,23 +6,28 @@ import XCTest
 ///
 ///   01_home            menu dopo l'intro animata
 ///   02_partita         FILO del giorno con un filo parzialmente tracciato
-///   03_vittoria        risultato: percorso del Sarto = 3 stelle, "Filo perfetto"
-///   04_statistiche     statistiche dopo la vittoria
+///   03_vittoria        risultato di vittoria (3 stelle o 🥇)
+///   04_statistiche     statistiche
 ///   05_salita          modalità Salita, livello 2 con filo in corso
 ///   06_archivio        archivio dei FILO passati
-///   07_come_si_gioca   guida del primo avvio
+///   07_come_si_gioca   guida "Come si gioca"
+///
+/// CATTURA BEST-EFFORT: ogni schermata è una fase indipendente che riparte dal
+/// menu; un errore in una fase viene registrato (log + screenshot di debug in
+/// <dir>/debug/) e non impedisce le altre. Il test fallisce SOLO alla fine, se
+/// le schermate salvate sono meno di 5.
+///
+/// LA PARTITA SI RISOLVE DA CIÒ CHE SI VEDE: i 25 valori e la Somma del Giorno
+/// sono letti dalle etichette VoiceOver; il percorso è cercato con una DFS
+/// limitata nel tempo (il più lungo possibile) e validato sul motore reale.
+/// Il generatore di FiloCore serve solo da ripiego (percorso del Sarto) se i
+/// valori coincidono col FILO di oggi/ieri/domani: niente dipendenza da data,
+/// fuso o generatore.
 ///
 /// Ambiente (dal workflow, con prefisso TEST_RUNNER_ che xcodebuild rimuove):
 ///   SCREENSHOT_DIR  cartella radice: i PNG vanno in <dir>/<lingua>/NN_nome.png
 ///   FILO_LANG       "it" (default) oppure "en"
-/// Ogni PNG è anche allegato all'xcresult (XCTAttachment, .keepAlways) come
-/// rete di sicurezza.
-///
-/// Le query usano le etichette di accessibilità e i testi REALI dell'app
-/// (Localizable.xcstrings), nelle due lingue: nessuna modifica al codice
-/// dell'app. Il percorso del Sarto si calcola con il generatore del giorno di
-/// FiloCore (sorgenti compilati dentro questo bundle) e si verifica contro i
-/// valori letti dalle caselle a schermo.
+/// Ogni PNG è anche allegato all'xcresult (XCTAttachment, .keepAlways).
 final class ScreenshotTests: XCTestCase {
 
     // MARK: Stato
@@ -30,10 +35,14 @@ final class ScreenshotTests: XCTestCase {
     private var app: XCUIApplication!
     private var ui = Testi(lingua: "it")
     private var cartella: URL?
+    private var cartellaDebug: URL?
     private var lancio = Date()
+    private var salvati: [String] = []
+    private var errori: [String] = []
 
     override func setUpWithError() throws {
-        continueAfterFailure = false
+        // Best-effort: un errore di una fase non deve fermare le successive.
+        continueAfterFailure = true
     }
 
     // MARK: Test
@@ -44,11 +53,15 @@ final class ScreenshotTests: XCTestCase {
         let lingua = (env["FILO_LANG"] ?? "it").lowercased().hasPrefix("en") ? "en" : "it"
         ui = Testi(lingua: lingua)
         if let dir = env["SCREENSHOT_DIR"], !dir.isEmpty {
-            let url = URL(fileURLWithPath: dir, isDirectory: true)
-                .appendingPathComponent(lingua, isDirectory: true)
+            let radice = URL(fileURLWithPath: dir, isDirectory: true)
+            let url = radice.appendingPathComponent(lingua, isDirectory: true)
+            let dbg = radice.appendingPathComponent("debug", isDirectory: true)
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+            try? FileManager.default.createDirectory(at: dbg, withIntermediateDirectories: true)
             cartella = url
+            cartellaDebug = dbg
         }
+        log("lingua=\(lingua) locale=\(ui.locale) cartella=\(cartella?.path ?? "-")")
 
         app = XCUIApplication()
         app.launchArguments += ["-AppleLanguages", "(\(lingua))",
@@ -56,126 +69,307 @@ final class ScreenshotTests: XCTestCase {
         lancio = Date()
         app.launch()
 
-        // ── 1. MENU dopo l'intro ────────────────────────────────────────────
-        // L'intro (IntroView) dura ~4,7 s + 0,45 s di dissolvenza e copre il
-        // menu: attendiamo che la card del daily sia toccabile E che sia
-        // trascorso il tempo dell'animazione.
-        let cardDaily = elemento(ui.cardDaily)
-        if !cardDaily.waitForExistence(timeout: 30) {
-            if elemento(ui.cardDailyFatta).exists {
-                XCTFail("Il FILO di oggi risulta già giocato: serve un'installazione pulita (simctl uninstall).")
-            }
-            XCTFail("Menu non trovato: manca la card '\(ui.cardDaily)'.")
-            return
+        fase("01_home") { try faseHome() }
+        fase("daily") { try faseDaily() }               // 07 (se c'è la guida), 02, 03
+        fase("04_statistiche") { try faseStatistiche() }
+        fase("05_salita") { try faseSalita() }
+        fase("06_archivio") { try faseArchivio() }
+        if !salvati.contains("07_come_si_gioca") {
+            fase("07_come_si_gioca") { try faseGuidaDalMenu() }
         }
-        aspettaToccabile(cardDaily, timeout: 20)
+
+        log("RIEPILOGO \(lingua): salvate \(salvati.count) schermate \(salvati.sorted())")
+        for e in errori { log("  errore registrato: \(e)") }
+        if salvati.count < 5 {
+            XCTFail("Solo \(salvati.count) screenshot salvati (minimo 5). Errori: \(errori.joined(separator: " | "))")
+        }
+    }
+
+    // MARK: Fasi
+
+    /// 01 — menu dopo l'intro (IntroView ~4,7 s + 0,45 s di dissolvenza).
+    @MainActor
+    private func faseHome() throws {
+        let card = elemento(ui.cardDaily)
+        if !card.waitForExistence(timeout: 30) {
+            if elemento(ui.cardDailyFatta).exists {
+                log("ATTENZIONE: il FILO di oggi risulta già giocato (installazione non pulita)")
+            } else {
+                throw ErroreScreenshot.fase("menu non trovato (card '\(ui.cardDaily)')")
+            }
+        }
+        aspettaToccabile(elemento(ui.cardSalita), timeout: 20)
         attendiDalLancio(secondi: 6.5)
         scatta("01_home")
+    }
 
-        // ── 7. Guida del primo avvio (Come si gioca) ─────────────────────────
-        cardDaily.tap()
+    /// 07 (guida del primo avvio) → 02 (filo parziale) → 03 (vittoria).
+    @MainActor
+    private func faseDaily() throws {
+        try tornaAlMenu()
+        let card = elemento(ui.cardDaily)
+        guard card.waitForExistence(timeout: 5) else {
+            throw ErroreScreenshot.fase("card del FILO del giorno non disponibile (già giocato?)")
+        }
+        aspettaToccabile(card, timeout: 10)
+        card.tap()
+
+        // Primo avvio: guida "Come si gioca" (0,4 s dopo l'apertura del daily).
         let gioca = elemento(prefisso: ui.prefissoGioca)
         if gioca.waitForExistence(timeout: 12) {
-            pausa(2.6)                       // la demo 3×3 mostra qualche casella accesa
+            pausa(2.6)                                   // la demo 3×3 accende qualche casella
             scatta("07_come_si_gioca")
-            gioca.tap()
-            // Catena primo avvio: dopo la guida arriva il "Riscaldamento".
-            let salta = elemento(ui.salta)
-            if salta.waitForExistence(timeout: 8) {
-                pausa(0.6)
-                salta.tap()
-                aspettaScomparsa(salta, timeout: 8)
-            }
+        } else {
+            log("guida 'Come si gioca' non comparsa all'apertura del daily")
         }
-        pausa(1.0)
+        // Chiude TUTTA la catena del primo avvio (guida → "Riscaldamento"),
+        // che usa una board di pratica con le STESSE etichette delle caselle.
+        try chiudiOnboarding()
 
-        // ── 2. Partita in corso con filo parziale ───────────────────────────
-        let grigliaDaily = try leggiGriglia()
-        let valoriMostrati = ScreenshotPlanner.valori(da: grigliaDaily.celle)
-        guard let daily = ScreenshotPlanner.puzzleDelGiorno(valoriMostrati: valoriMostrati) else {
-            XCTFail("La griglia a schermo non corrisponde al FILO di oggi/ieri/domani calcolato con FiloCore.")
-            return
+        let lettura = try leggiSchermo(minimoCelle: 25)
+        guard let g = lettura.grigliaPiuAlta, let valori = ScreenshotPlanner.valori(da: g.celle) else {
+            throw ErroreScreenshot.fase("griglia del daily non leggibile")
         }
-        XCTAssertTrue(ScreenshotPlanner.verificaSarto(daily.puzzle),
-                      "Il percorso del Sarto non dà una vittoria a 3 stelle sul motore reale.")
-        let sarto = daily.puzzle.percorsoSarto
-        let parziale = max(4, sarto.count / 2)
-        for idx in sarto.prefix(parziale) {
-            tocca(ScreenshotPlanner.centro(idx: idx, griglia: grigliaDaily.frame))
+        let T = ScreenshotPlanner.numero(dopo: ui.prefissoSommaGiorno, in: lettura.etichette)
+        let L = ScreenshotPlanner.numero(dopo: ui.prefissoSarto, in: lettura.etichette)
+        log("DAILY valori letti (row-major):\n\(ScreenshotPlanner.testoGriglia(valori))")
+        log("DAILY somma letta=\(T.map(String.init) ?? "nil") Sarto letto=\(L.map(String.init) ?? "nil") griglia=\(g.frame) griglie trovate=\(lettura.griglie.count)")
+        guard let piano = ScreenshotPlanner.pianoDaily(valori: valori, somma: T, lSarto: L, secondi: 4) else {
+            throw ErroreScreenshot.fase("nessun percorso con somma \(T.map(String.init) ?? "?") sui valori letti")
+        }
+        log("DAILY piano: \(piano.fonte), somma \(piano.somma), percorso \(piano.percorso)")
+
+        let percorso = piano.percorso
+        let parziale = min(percorso.count - 1, max(4, percorso.count / 2))
+        for idx in percorso.prefix(parziale) {
+            tocca(ScreenshotPlanner.centro(idx: idx, griglia: g.frame))
         }
         pausa(0.8)
         scatta("02_partita")
 
-        // ── 3. Vittoria con il percorso del Sarto ───────────────────────────
-        for idx in sarto.dropFirst(parziale) {
-            tocca(ScreenshotPlanner.centro(idx: idx, griglia: grigliaDaily.frame))
+        for idx in percorso.dropFirst(parziale) {
+            tocca(ScreenshotPlanner.centro(idx: idx, griglia: g.frame))
         }
         // reveal del Sarto (≤ 1,8 s) + 0,75 s, poi il modal risultato
-        let linkStatistiche = elemento(ui.linkStatistiche)
-        XCTAssertTrue(linkStatistiche.waitForExistence(timeout: 20),
-                      "Il modal risultato non è comparso dopo il percorso del Sarto.")
-        pausa(1.6)                           // stelle animate in stagger
+        let link = elemento(ui.linkStatistiche)
+        guard link.waitForExistence(timeout: 20) else {
+            throw ErroreScreenshot.fase("modal risultato non comparso dopo il percorso")
+        }
+        pausa(1.6)                                       // stelle animate in stagger
         scatta("03_vittoria")
+    }
 
-        // ── 4. Statistiche ──────────────────────────────────────────────────
-        try tappa(ui.chiudi)
-        aspettaScomparsa(linkStatistiche, timeout: 8)
-        pausa(0.6)
+    /// 04 — statistiche dal menu (funziona anche se il daily è fallito).
+    @MainActor
+    private func faseStatistiche() throws {
+        try tornaAlMenu()
         try tappa(ui.statistiche)
-        let titoloStatistiche = app.staticTexts[ui.statistiche]
-        XCTAssertTrue(titoloStatistiche.waitForExistence(timeout: 10), "Statistiche non aperte.")
+        let titolo = app.staticTexts[ui.statistiche]
+        guard titolo.waitForExistence(timeout: 10) else {
+            throw ErroreScreenshot.fase("scheda Statistiche non aperta")
+        }
         pausa(0.9)
         scatta("04_statistiche")
-        try tappa(ui.chiudi)
-        aspettaScomparsa(titoloStatistiche, timeout: 8)
-        pausa(0.6)
+    }
 
-        // ── 5. Salita: livello 1 risolto, livello 2 con filo in corso ───────
-        try tappa(ui.menu)                   // ritorno al menu (transizione a tessere)
-        let cardSalita = elemento(ui.cardSalita)
-        XCTAssertTrue(cardSalita.waitForExistence(timeout: 10), "Card Salita non trovata.")
-        aspettaToccabile(cardSalita, timeout: 10)
-        pausa(1.3)                           // fine transizione: durante le tessere il tap è ignorato
-        cardSalita.tap()
-        XCTAssertTrue(elemento(senzaMaiuscole: ui.livello(1)).waitForExistence(timeout: 10), "Salita non aperta.")
+    /// 05 — Salita: livello 1 risolto, livello 2 con filo in corso.
+    @MainActor
+    private func faseSalita() throws {
+        try tornaAlMenu()
+        let card = elemento(ui.cardSalita)
+        aspettaToccabile(card, timeout: 10)
+        try toccaElemento(card, "card Salita")
+        guard elemento(senzaMaiuscole: ui.livello(1)).waitForExistence(timeout: 10) else {
+            throw ErroreScreenshot.fase("Salita non aperta")
+        }
         pausa(1.3)
 
-        let griglia1 = try leggiGriglia()
-        guard let valori1 = ScreenshotPlanner.valori(da: griglia1.celle),
-              let soluzione1 = ScreenshotPlanner.percorso(somma: Testi.targetSalita(livello: 1), valori: valori1)
-        else { XCTFail("Livello 1 della Salita: nessun percorso a somma esatta trovato."); return }
-        for idx in soluzione1 { tocca(ScreenshotPlanner.centro(idx: idx, griglia: griglia1.frame)) }
-        XCTAssertTrue(elemento(senzaMaiuscole: ui.livello(2)).waitForExistence(timeout: 10), "Livello 2 non raggiunto.")
+        let g1 = try risolviSalita(livello: 1, completo: true)
+        log("SALITA L1 risolto: \(g1)")
+        guard elemento(senzaMaiuscole: ui.livello(2)).waitForExistence(timeout: 10) else {
+            throw ErroreScreenshot.fase("livello 2 non raggiunto")
+        }
         pausa(0.8)
-
-        let griglia2 = try leggiGriglia()
-        guard let valori2 = ScreenshotPlanner.valori(da: griglia2.celle),
-              let soluzione2 = ScreenshotPlanner.percorso(somma: Testi.targetSalita(livello: 2), valori: valori2)
-        else { XCTFail("Livello 2 della Salita: nessun percorso a somma esatta trovato."); return }
-        for idx in soluzione2.dropLast() { tocca(ScreenshotPlanner.centro(idx: idx, griglia: griglia2.frame)) }
+        let g2 = try risolviSalita(livello: 2, completo: false)
+        log("SALITA L2 parziale: \(g2)")
         aspettaScomparsa(elemento(ui.livelloSuperato), timeout: 5)   // toast via
         pausa(0.6)
         scatta("05_salita")
+    }
 
-        // ── 6. Archivio (Profilo → Archivio FILO) ───────────────────────────
-        try tappa(ui.chiudi)                 // chiude la Salita (xmark "Chiudi")
-        let profilo = elemento(ui.profilo)
-        XCTAssertTrue(profilo.waitForExistence(timeout: 10), "Pulsante Profilo non trovato.")
-        aspettaToccabile(profilo, timeout: 10)
-        pausa(1.3)
-        profilo.tap()
-        let voceArchivio = elemento(contiene: ui.archivio)
-        XCTAssertTrue(voceArchivio.waitForExistence(timeout: 10), "Voce Archivio non trovata nel Profilo.")
+    /// 06 — Profilo → Archivio FILO.
+    @MainActor
+    private func faseArchivio() throws {
+        try tornaAlMenu()
+        try tappa(ui.profilo)
+        let voce = elemento(contiene: ui.archivio)
+        guard voce.waitForExistence(timeout: 10) else {
+            throw ErroreScreenshot.fase("voce Archivio non trovata nel Profilo")
+        }
         var tentativi = 0
-        while !voceArchivio.isHittable && tentativi < 4 {
+        while !voce.isHittable && tentativi < 4 {
             app.swipeUp()
             tentativi += 1
         }
-        voceArchivio.tap()
-        let rigaArchivio = elemento(prefisso: ui.prefissoRigaArchivio)
-        XCTAssertTrue(rigaArchivio.waitForExistence(timeout: 10), "Archivio vuoto o non aperto.")
+        try toccaElemento(voce, "voce Archivio")
+        guard elemento(prefisso: ui.prefissoRigaArchivio).waitForExistence(timeout: 10) else {
+            throw ErroreScreenshot.fase("archivio vuoto o non aperto")
+        }
         pausa(0.9)
         scatta("06_archivio")
+    }
+
+    /// 07 di ripiego — "Come si gioca" dal pulsante ? del menu.
+    @MainActor
+    private func faseGuidaDalMenu() throws {
+        try tornaAlMenu()
+        try tappa(ui.comeSiGioca)
+        guard elemento(prefisso: ui.prefissoGioca).waitForExistence(timeout: 10) else {
+            throw ErroreScreenshot.fase("guida non aperta dal menu")
+        }
+        pausa(2.6)
+        scatta("07_come_si_gioca")
+    }
+
+    // MARK: Navigazione robusta
+
+    /// Riporta al MENU chiudendo qualsiasi cosa sia aperta (onboarding,
+    /// schede, Salita, daily). Il menu è riconosciuto dalla card Salita
+    /// toccabile (sotto un fullScreenCover non è nell'albero).
+    @MainActor
+    private func tornaAlMenu() throws {
+        let cardSalita = elemento(ui.cardSalita)
+        for giro in 0..<10 {
+            if cardSalita.exists && cardSalita.isHittable
+                && !elemento(ui.chiudi).exists && !elemento(ui.salta).exists {
+                pausa(1.3)                                // fine eventuale transizione a tessere
+                return
+            }
+            if tappaSeToccabile(ui.salta) { log("tornaAlMenu[\(giro)]: Salta"); pausa(1.0); continue }
+            if tappaSeToccabile(prefisso: ui.prefissoGioca) { log("tornaAlMenu[\(giro)]: Gioca"); pausa(1.0); continue }
+            if tappaSeToccabile(ui.chiudi) { log("tornaAlMenu[\(giro)]: Chiudi"); pausa(1.0); continue }
+            if tappaSeToccabile(ui.menu) { log("tornaAlMenu[\(giro)]: Menu"); pausa(1.5); continue }
+            log("tornaAlMenu[\(giro)]: swipe giù")
+            app.swipeDown()
+            pausa(1.0)
+        }
+        throw ErroreScreenshot.fase("impossibile tornare al menu")
+    }
+
+    /// Chiude guida e "Riscaldamento" finché non resta il daily (HUD con la
+    /// Somma del Giorno) senza fogli sopra.
+    @MainActor
+    private func chiudiOnboarding() throws {
+        let scadenza = Date().addingTimeInterval(30)
+        while Date() < scadenza {
+            if tappaSeToccabile(prefisso: ui.prefissoGioca) { log("onboarding: tap 'Gioca il FILO'"); pausa(1.2); continue }
+            if tappaSeToccabile(ui.salta) { log("onboarding: tap 'Salta'"); pausa(1.2); continue }
+            if elemento(senzaMaiuscole: ui.riscaldamento).exists {
+                log("onboarding: 'Riscaldamento' ancora presente, swipe giù")
+                app.swipeDown()
+                pausa(1.0)
+                continue
+            }
+            if elemento(prefisso: ui.prefissoSommaGiorno).exists && !elemento(ui.salta).exists {
+                pausa(0.8)
+                return
+            }
+            pausa(0.5)
+        }
+        throw ErroreScreenshot.fase("onboarding non chiuso o daily non visibile")
+    }
+
+    /// Legge e risolve una board della Salita. `completo`: tocca tutto il
+    /// percorso (supera il livello); altrimenti si ferma alla penultima casella.
+    @MainActor
+    private func risolviSalita(livello: Int, completo: Bool) throws -> [Int] {
+        let lettura = try leggiSchermo(minimoCelle: 25)
+        guard let g = lettura.grigliaPiuAlta, let valori = ScreenshotPlanner.valori(da: g.celle) else {
+            throw ErroreScreenshot.fase("board Salita L\(livello) non leggibile")
+        }
+        let target = ScreenshotPlanner.numero(dopo: ui.prefissoObiettivo, in: lettura.etichette)
+            ?? Testi.targetSalita(livello: livello)
+        log("SALITA L\(livello) target=\(target) valori:\n\(ScreenshotPlanner.testoGriglia(valori))")
+        guard let percorso = ScreenshotPlanner.percorsoMigliore(somma: target, valori: valori, secondi: 3),
+              ScreenshotPlanner.vince(percorso, valori: valori, somma: target) else {
+            throw ErroreScreenshot.fase("Salita L\(livello): nessun percorso con somma \(target)")
+        }
+        let da = completo ? percorso : Array(percorso.dropLast())
+        for idx in da { tocca(ScreenshotPlanner.centro(idx: idx, griglia: g.frame)) }
+        return percorso
+    }
+
+    // MARK: Lettura dello schermo
+
+    private struct Griglia {
+        let celle: [ScreenshotPlanner.Cella]
+        let frame: CGRect
+    }
+
+    private struct Lettura {
+        let griglie: [Griglia]          // in ordine di albero: l'ULTIMA è la più in alto
+        let etichette: [String]
+        var grigliaPiuAlta: Griglia? { griglie.last }
+    }
+
+    /// UN solo snapshot dell'albero di accessibilità: tutte le etichette e,
+    /// per ogni contenitore "Griglia di gioco…", le caselle il cui centro cade
+    /// dentro il suo frame. Così due board sovrapposte (es. daily sotto e
+    /// "Riscaldamento" sopra) non si mescolano mai.
+    @MainActor
+    private func leggiSchermo(minimoCelle: Int) throws -> Lettura {
+        let scadenza = Date().addingTimeInterval(15)
+        var motivo = "nessuna griglia"
+        repeat {
+            let radice = try app.snapshot()
+            var etichette: [String] = []
+            var frameGriglie: [CGRect] = []
+            var celle: [(ScreenshotPlanner.Cella, CGRect)] = []
+
+            func visita(_ s: XCUIElementSnapshot) {
+                if !s.label.isEmpty { etichette.append(s.label) }
+                if s.label == ui.etichettaGriglia, s.frame.width > 100, s.frame.height > 100 {
+                    frameGriglie.append(s.frame)
+                }
+                if let c = ScreenshotPlanner.parseCella(s.label, prefisso: ui.prefissoCasella) {
+                    celle.append((c, s.frame))
+                }
+                for figlio in s.children { visita(figlio) }
+            }
+            visita(radice)
+
+            var griglie: [Griglia] = []
+            for f in frameGriglie {
+                var viste = Set<Int>()
+                var dentro: [ScreenshotPlanner.Cella] = []
+                for (c, fr) in celle where f.insetBy(dx: -2, dy: -2).contains(CGPoint(x: fr.midX, y: fr.midY))
+                    && !viste.contains(c.indice) {
+                    viste.insert(c.indice)
+                    dentro.append(c)
+                }
+                if dentro.count >= minimoCelle { griglie.append(Griglia(celle: dentro, frame: f)) }
+            }
+            if griglie.isEmpty, frameGriglie.isEmpty, !celle.isEmpty {
+                // Il contenitore non espone il frame: unione dei frame delle caselle.
+                var viste = Set<Int>()
+                var dentro: [ScreenshotPlanner.Cella] = []
+                var frames: [CGRect] = []
+                for (c, fr) in celle where !viste.contains(c.indice) {
+                    viste.insert(c.indice); dentro.append(c); frames.append(fr)
+                }
+                let unione = frames.dropFirst().reduce(frames[0]) { $0.union($1) }
+                if dentro.count >= minimoCelle, unione.width > frames[0].width * 4 {
+                    griglie.append(Griglia(celle: dentro, frame: unione))
+                }
+            }
+            if !griglie.isEmpty {
+                if griglie.count > 1 { log("ATTENZIONE: \(griglie.count) griglie a schermo, uso la più in alto") }
+                return Lettura(griglie: griglie, etichette: etichette)
+            }
+            motivo = "contenitori griglia: \(frameGriglie.count), caselle: \(celle.count)"
+            pausa(0.5)
+        } while Date() < scadenza
+        throw ErroreScreenshot.fase("griglia non leggibile (\(motivo))")
     }
 
     // MARK: Screenshot
@@ -189,67 +383,54 @@ final class ScreenshotTests: XCTestCase {
         allegato.name = "\(ui.lingua)_\(nome)"
         allegato.lifetime = .keepAlways
         add(allegato)
-        guard let cartella else { return }
-        let url = cartella.appendingPathComponent("\(nome).png")
-        do {
-            try shot.pngRepresentation.write(to: url, options: .atomic)
-        } catch {
-            XCTFail("Impossibile scrivere \(url.path): \(error)")
+        if let cartella {
+            let url = cartella.appendingPathComponent("\(nome).png")
+            do {
+                try shot.pngRepresentation.write(to: url, options: .atomic)
+            } catch {
+                log("ERRORE scrittura \(url.path): \(error)")
+            }
+        }
+        if !salvati.contains(nome) { salvati.append(nome) }
+        log("📸 \(nome)")
+    }
+
+    /// Screenshot di DEBUG al momento di un errore (cartella debug/, allegato
+    /// "debug_…": non entra fra gli screenshot App Store).
+    @MainActor
+    private func scattaDebug(_ fase: String) {
+        let shot = XCUIScreen.main.screenshot()
+        let allegato = XCTAttachment(screenshot: shot)
+        allegato.name = "debug_\(ui.lingua)_\(fase)"
+        allegato.lifetime = .keepAlways
+        add(allegato)
+        if let cartellaDebug {
+            let url = cartellaDebug.appendingPathComponent("\(ui.lingua)_\(fase)_\(errori.count).png")
+            try? shot.pngRepresentation.write(to: url, options: .atomic)
+            log("debug salvato: \(url.path)")
         }
     }
 
-    // MARK: Griglia
+    // MARK: Fase best-effort
 
-    private struct Griglia {
-        let celle: [ScreenshotPlanner.Cella]
-        let frame: CGRect
-    }
-
-    /// Legge in UN solo snapshot dell'albero di accessibilità le 25 caselle
-    /// (etichetta → riga, colonna, valore) e il frame della griglia
-    /// ("Griglia di gioco, 5 righe per 5 colonne"). Se il contenitore non
-    /// espone il frame, lo ricava dall'unione dei frame delle caselle.
     @MainActor
-    private func leggiGriglia() throws -> Griglia {
-        let scadenza = Date().addingTimeInterval(15)
-        var ultimoErrore = "griglia non trovata"
-        repeat {
-            let radice = try app.snapshot()
-            var celle: [ScreenshotPlanner.Cella] = []
-            var frameCelle: [CGRect] = []
-            var frameGriglia: CGRect?
-            var visti = Set<Int>()
-
-            func visita(_ s: XCUIElementSnapshot) {
-                if s.label == ui.etichettaGriglia, s.frame.width > 100, s.frame.height > 100 {
-                    frameGriglia = s.frame
-                }
-                if let c = ScreenshotPlanner.parseCella(s.label, prefisso: ui.prefissoCasella),
-                   !visti.contains(c.indice) {
-                    visti.insert(c.indice)
-                    celle.append(c)
-                    frameCelle.append(s.frame)
-                }
-                for figlio in s.children { visita(figlio) }
-            }
-            visita(radice)
-
-            if celle.count == 25 {
-                if let g = frameGriglia {
-                    return Griglia(celle: celle, frame: g)
-                }
-                let unione = frameCelle.dropFirst().reduce(frameCelle[0]) { $0.union($1) }
-                if let prima = frameCelle.first, unione.width > prima.width * 4 {
-                    return Griglia(celle: celle, frame: unione)
-                }
-                ultimoErrore = "frame della griglia non disponibile"
-            } else {
-                ultimoErrore = "trovate \(celle.count) caselle su 25"
-            }
-            pausa(0.5)
-        } while Date() < scadenza
-        throw ErroreScreenshot.griglia(ultimoErrore)
+    private func fase(_ nome: String, _ corpo: () throws -> Void) {
+        log("▶︎ FASE \(nome)")
+        do {
+            try corpo()
+        } catch {
+            errori.append("[\(nome)] \(error)")
+            log("✖︎ ERRORE fase \(nome): \(error)")
+            scattaDebug(nome)
+            log("albero UI (estratto):\n\(String(app.debugDescription.prefix(6000)))")
+        }
     }
+
+    private func log(_ s: String) {
+        print("[FILO-SHOT] \(s)")
+    }
+
+    // MARK: Tocchi e query
 
     /// Tocco a coordinate schermo (i frame dello snapshot sono in punti,
     /// origine in alto a sinistra: in ritratto coincide con l'app).
@@ -260,7 +441,11 @@ final class ScreenshotTests: XCTestCase {
             .tap()
     }
 
-    // MARK: Query
+    @MainActor
+    private func toccaElemento(_ e: XCUIElement, _ descrizione: String) throws {
+        guard e.exists else { throw ErroreScreenshot.elemento(descrizione) }
+        e.tap()
+    }
 
     @MainActor
     private func elemento(_ label: String) -> XCUIElement {
@@ -288,8 +473,8 @@ final class ScreenshotTests: XCTestCase {
             .matching(NSPredicate(format: "label CONTAINS %@", contiene)).firstMatch
     }
 
-    /// Tocca il primo elemento TOCCABILE con quell'etichetta (con fogli e
-    /// cover sovrapposti la stessa etichetta può esistere più volte).
+    /// Tocca l'ULTIMO elemento toccabile con quell'etichetta (con fogli
+    /// sovrapposti quello più in alto arriva per ultimo nell'albero).
     @MainActor
     private func tappa(_ label: String, timeout: TimeInterval = 10) throws {
         let query = app.descendants(matching: .any)
@@ -297,11 +482,31 @@ final class ScreenshotTests: XCTestCase {
         guard query.firstMatch.waitForExistence(timeout: timeout) else {
             throw ErroreScreenshot.elemento(label)
         }
-        for e in query.allElementsBoundByIndex where e.exists && e.isHittable {
-            e.tap()
-            return
+        aspettaToccabile(query.firstMatch, timeout: 5)
+        if !tappaUltimoToccabile(query) {
+            try toccaElemento(query.firstMatch, label)
         }
-        query.firstMatch.tap()
+    }
+
+    @MainActor
+    private func tappaSeToccabile(_ label: String) -> Bool {
+        tappaUltimoToccabile(app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == %@", label)))
+    }
+
+    @MainActor
+    private func tappaSeToccabile(prefisso: String) -> Bool {
+        tappaUltimoToccabile(app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", prefisso)))
+    }
+
+    @MainActor
+    private func tappaUltimoToccabile(_ query: XCUIElementQuery) -> Bool {
+        for e in query.allElementsBoundByIndex.reversed() where e.exists && e.isHittable {
+            e.tap()
+            return true
+        }
+        return false
     }
 
     // MARK: Attese
@@ -334,13 +539,13 @@ final class ScreenshotTests: XCTestCase {
 // MARK: - Errori
 
 private enum ErroreScreenshot: Error, CustomStringConvertible {
-    case griglia(String)
+    case fase(String)
     case elemento(String)
 
     var description: String {
         switch self {
-        case .griglia(let m): return "Griglia: \(m)"
-        case .elemento(let l): return "Elemento non trovato: \(l)"
+        case .fase(let m): return m
+        case .elemento(let l): return "elemento non trovato: \(l)"
         }
     }
 }
@@ -362,13 +567,18 @@ private struct Testi {
     var cardSalita: String { it ? "Salita, sempre disponibile" : "Climb, always available" }
     var statistiche: String { it ? "Statistiche" : "Statistics" }
     var profilo: String { it ? "Profilo e temi" : "Profile and themes" }
+    var comeSiGioca: String { it ? "Come si gioca" : "How to play" }
 
     // RootView / schede
     var menu: String { "Menu" }
     var chiudi: String { it ? "Chiudi" : "Close" }
     var prefissoGioca: String { it ? "Gioca il FILO #" : "Play FILO #" }
     var salta: String { it ? "Salta" : "Skip" }
+    var riscaldamento: String { it ? "Riscaldamento" : "Warm-up" }
     var linkStatistiche: String { it ? "📊 Le tue statistiche" : "📊 Your statistics" }
+    /// HUD del daily: accessibilityLabel "Somma del giorno: T" / "Il Sarto ha usato L caselle…"
+    var prefissoSommaGiorno: String { it ? "Somma del giorno: " : "Daily sum: " }
+    var prefissoSarto: String { it ? "Il Sarto ha usato " : "The Tailor used " }
 
     // Griglia (BoardView / PracticeBoardView)
     var etichettaGriglia: String {
@@ -379,6 +589,7 @@ private struct Testi {
     // Salita
     func livello(_ n: Int) -> String { it ? "Livello \(n)" : "Level \(n)" }
     var livelloSuperato: String { it ? "Livello superato!" : "Level cleared!" }
+    var prefissoObiettivo: String { it ? "Obiettivo: " : "Target: " }
 
     /// Target dei livelli della Salita (SalitaViewModel.target: 10, 25, 50, 100…).
     static func targetSalita(livello n: Int) -> Int {

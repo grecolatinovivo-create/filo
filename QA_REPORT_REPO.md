@@ -57,7 +57,7 @@
 
 ## 2. Fix applicati
 
-1. **`native-ios/Sources/FiloCore/ShareText.swift`** — il web ha `CONFIG.SHARE_URL = 'https://filo-game.vercel.app'` e il testo condiviso termina con la riga URL; l'iOS non la includeva mai (l'amico che riceve non aveva destinazione — rischio "Alto" in NEURO_SPEC §6). Aggiunto parametro `url: String? = nil` con la **stessa condizione del JS** (`if (CONFIG.SHARE_URL)`) e costante `ShareText.shareURL` allineata al web. Default `nil` ⇒ gli esempi congelati §9.2 restano intatti.
+1. **`native-ios/Sources/FiloCore/ShareText.swift`** — il web ha `CONFIG.SHARE_URL = 'https://filo-game-liard.vercel.app'` e il testo condiviso termina con la riga URL; l'iOS non la includeva mai (l'amico che riceve non aveva destinazione — rischio "Alto" in NEURO_SPEC §6). Aggiunto parametro `url: String? = nil` con la **stessa condizione del JS** (`if (CONFIG.SHARE_URL)`) e costante `ShareText.shareURL` allineata al web. Default `nil` ⇒ gli esempi congelati §9.2 restano intatti.
 2. **`native-ios/Sources/App/GameViewModel.swift`** — `shareText` ora passa `url: ShareText.shareURL`: anteprima nel modal e testo di `ShareLink` coincidono carattere per carattere col web (regola anti-dark-pattern §4.4: mai contenuto aggiunto di nascosto).
 3. **`native-ios/Tests/FiloCoreTests/ShareTextTests.swift`** — `testNessunURLMai` → `testNessunaRigaURLSenzaConfig` (url nil/vuoto ⇒ nessuna riga, mai inventare domini) + nuovo `testRigaURLQuandoConfigurata` (il testo TERMINA con l'URL, una sola volta — parità con `share_url_test.js`).
 

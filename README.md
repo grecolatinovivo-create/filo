@@ -52,7 +52,7 @@ vercel --prod
 `Permissions-Policy` minimale) e `Cache-Control: no-cache` su `index.html`,
 così ogni deploy è servito subito senza cache stantia.
 
-> **Dominio**: se il dominio finale è diverso da `https://filo-game.vercel.app`,
+> **Dominio**: se il dominio finale è diverso da `https://filo-game-liard.vercel.app`,
 > aggiorna la costante `SHARE_URL` nella sezione CONFIG di `index.html`
 > (è l'URL aggiunto come ultima riga del testo condiviso) e il meta tag `og:url`.
 

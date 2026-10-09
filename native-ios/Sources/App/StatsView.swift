@@ -7,6 +7,8 @@ import FiloCore
 struct StatsView: View {
     @EnvironmentObject private var vm: GameViewModel
     @Environment(\.dismiss) private var dismiss
+    /// SF Pro 14 della riga "Percentuale di vittorie", con Dynamic Type.
+    @ScaledMetric(relativeTo: .subheadline) private var corpoRiga: CGFloat = 14
 
     private var stats: Statistiche { vm.stats }
 
@@ -100,7 +102,7 @@ struct StatsView: View {
     // MARK: 2×2 StatCard + percentuale
 
     private var riepilogo: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
             Grid(horizontalSpacing: 12, verticalSpacing: 12) {
                 GridRow {
                     StatCard(value: "\(stats.giocate)", label: "Sfide giocate")
@@ -111,9 +113,22 @@ struct StatsView: View {
                     StatCard(value: "\(stats.maxStreak)", label: "Serie migliore")
                 }
             }
-            Text("Percentuale di vittorie: \(percentualeTesto)")
-                .filoFont(.caption)
-                .foregroundStyle(Theme.textSecondary)
+            // ROUND2 §11: riga strutturata sotto le quattro card (16 sopra;
+            // i 32 sotto li dà "Vittorie per filo").
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text("Percentuale di vittorie")
+                    .font(.system(size: corpoRiga))
+                    .foregroundStyle(Theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+                Text(verbatim: percentualeTesto)
+                    .font(.system(size: corpoRiga, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.textPrimary)
+            }
+            .frame(minHeight: 24)
+            .padding(.top, FiloMetrics.relatedGapLarge)
+            .accessibilityElement(children: .combine)
         }
     }
 

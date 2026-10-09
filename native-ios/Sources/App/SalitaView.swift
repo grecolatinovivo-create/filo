@@ -168,31 +168,48 @@ struct SalitaView: View {
         if let onClose { onClose() } else { dismiss() }
     }
 
+    /// Altezza misurata dell'HUD (dimensionamento della griglia in altezza).
+    @State private var altezzaHUD: CGFloat = GameScreenMetrics.stimaHUD
+
     var body: some View {
-        GeometryReader { geo in
-            let margine = FiloMetrics.margin(forWidth: geo.size.width)
+        GeometryReader { esterno in
+            let margine = FiloMetrics.margin(forWidth: esterno.size.width)
             VStack(spacing: 0) {
                 header
                     .padding(.horizontal, max(0, margine - 12))
                 ZStack {
-                    ScrollView {
-                        VStack(spacing: FiloMetrics.sectionGap) {
-                            hud
-                            board
-                            Button("Ricomincia il filo") {
-                                FiloHaptics.light()
-                                vm.ripulisci()
+                    // Stessa composizione della Partita (ROUND2 §6/§9): HUD in
+                    // alto, griglia + "Ricomincia il filo" centrati sotto.
+                    GeometryReader { area in
+                        let larghezza = GameScreenMetrics.larghezzaGriglia(contenitore: area.size.width,
+                                                                           margine: margine)
+                        let lato = GameScreenMetrics.latoGriglia(larghezza: larghezza,
+                                                                 altezzaDisponibile: area.size.height,
+                                                                 altezzaHUD: altezzaHUD)
+                        ScrollView {
+                            GameScreenLayout(altezzaMinima: area.size.height,
+                                             compensazioneBasso: esterno.safeAreaInsets.bottom) {
+                                hud
+                                    .frame(maxWidth: larghezza)
+                                    .padding(.top, FiloMetrics.relatedGap)
+                                    .misuraAltezza($altezzaHUD)
+                                VStack(spacing: GameScreenMetrics.spazioGrigliaBottone) {
+                                    board
+                                        .frame(width: lato, height: lato)
+                                    Button("Ricomincia il filo") {
+                                        FiloHaptics.light()
+                                        vm.ripulisci()
+                                    }
+                                    .buttonStyle(SecondaryButtonStyle(enabled: !vm.gameOver, fullWidth: true))
+                                    .disabled(vm.gameOver)
+                                    .frame(maxWidth: lato)
+                                }
                             }
-                            .buttonStyle(SecondaryButtonStyle(enabled: !vm.gameOver))
-                            .disabled(vm.gameOver)
+                            .padding(.horizontal, margine)
+                            .frame(maxWidth: .infinity)
                         }
-                        .padding(.horizontal, margine)
-                        .padding(.top, FiloMetrics.relatedGap)
-                        .padding(.bottom, FiloMetrics.sectionGapLarge)
-                        .frame(maxWidth: 480)
-                        .frame(maxWidth: .infinity)
+                        .scrollBounceBehavior(.basedOnSize)
                     }
-                    .scrollBounceBehavior(.basedOnSize)
 
                     if vm.gameOver {
                         gameOverOverlay
@@ -249,8 +266,12 @@ struct SalitaView: View {
             removal: .offset(y: -12).combined(with: .opacity))
     }
 
+    /// Stessa struttura e metriche dell'HUD della Partita: eyebrow, obiettivo
+    /// 64, poi `GameHUDMetricRow` con "Somma attuale" a sinistra e le vite
+    /// (tre cerchi 10 pt + "3 vite" 13 pt) a destra. Ordine d'accessibilità:
+    /// "Livello N" → "Obiettivo: N" → somma → vite.
     private var hud: some View {
-        VStack(spacing: FiloMetrics.relatedGap) {
+        VStack(spacing: 0) {
             Text("Livello \(vm.livello)")
                 .eyebrowStyle()
                 .contentTransition(.numericText())
@@ -274,46 +295,30 @@ struct SalitaView: View {
             }
             .animation(FiloMotion.adaptive(FiloMotion.level, reduceMotion: reduceMotion), value: vm.livello)
 
-            sommaAttuale
-
-            HStack(spacing: FiloMetrics.relatedGap) {
-                LivesIndicator(lives: vm.vite)
-                Group {
-                    if vm.vite == 1 {
-                        Text("Ultima vita")
-                            .foregroundStyle(Theme.error)
-                    } else {
-                        Text("\(vm.vite) vite")
-                            .foregroundStyle(Theme.textSecondary)
+            GameHUDMetricRow {
+                GameHUDMetric(somma: vm.session.somma,
+                              totale: vm.target,
+                              etichetta: Text("Somma attuale: \(vm.session.somma) di \(vm.target)"))
+            } trailing: {
+                HStack(spacing: FiloMetrics.relatedGap) {
+                    LivesIndicator(lives: vm.vite, size: 10)
+                    Group {
+                        if vm.vite == 1 {
+                            Text("Ultima vita")
+                                .foregroundStyle(Theme.error)
+                        } else {
+                            Text("\(vm.vite) vite")
+                                .foregroundStyle(Theme.textSecondary)
+                        }
                     }
+                    .filoFont(.caption)
+                    .lineLimit(1)
+                    .accessibilityHidden(true)   // già detto da "Vite rimaste: n di 3"
                 }
-                .filoFont(.caption)
-                .accessibilityHidden(true)   // già detto da "Vite rimaste: n di 3"
             }
+            .padding(.top, FiloMetrics.relatedGapLarge)
         }
         .frame(maxWidth: .infinity)
-    }
-
-    private var sommaAttuale: some View {
-        HStack(alignment: .firstTextBaseline, spacing: FiloMetrics.relatedGap) {
-            Text("Somma attuale")
-                .filoFont(.caption)
-                .foregroundStyle(Theme.textSecondary)
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(verbatim: "\(vm.session.somma)")
-                    .filoFont(.currentSum)
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.textPrimary)
-                    .contentTransition(.numericText())
-                    .animation(reduceMotion ? nil : FiloMotion.numeric, value: vm.session.somma)
-                Text(verbatim: "/ \(vm.target)")
-                    .filoFont(.body)
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.textTertiary)
-            }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("Somma attuale: \(vm.session.somma) di \(vm.target)"))
     }
 
     // MARK: Board (crossfade 0,22 s al cambio livello)
@@ -324,7 +329,6 @@ struct SalitaView: View {
                 .id(vm.livello)
                 .transition(.opacity)
         }
-        .frame(maxWidth: BoardMetrics.maxWidth)
         .animation(.easeInOut(duration: reduceMotion ? FiloMotion.reducedDuration : 0.22), value: vm.livello)
     }
 

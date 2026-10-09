@@ -4559,59 +4559,6 @@
         }
       }
     },
-    "Somma %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Somma %@"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Target %@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Objectif %@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Objetivo %@"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ziel %@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "目标 %@"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Objetivo %@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "目標 %@"
-          }
-        }
-      }
-    },
     "Il Sarto ha usato %lld caselle.": {
       "extractionState": "manual",
       "localizations": {
@@ -6847,59 +6794,6 @@
         }
       }
     },
-    "Percentuale di vittorie: %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Percentuale di vittorie: %@"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Win rate: %@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Taux de victoire : %@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Porcentaje de victorias: %@"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Siegquote: %@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "胜率：%@"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Taxa de vitórias: %@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "勝率：%@"
-          }
-        }
-      }
-    },
     "Vittorie per filo": {
       "extractionState": "manual",
       "localizations": {
@@ -8309,59 +8203,6 @@
         }
       }
     },
-    "Non puoi ripassare su una casella già usata. Hai tre fili: se superi la somma il filo si spezza, se resti senza uscite si annoda. Più caselle usi, più stelle ottieni: supera il Sarto per la medaglia.": {
-      "extractionState": "manual",
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Non puoi ripassare su una casella già usata. Hai tre fili: se superi la somma il filo si spezza, se resti senza uscite si annoda. Più caselle usi, più stelle ottieni: supera il Sarto per la medaglia."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "You can't cross a tile you've already used. You have three threads: go over the target and the thread breaks; run out of moves and it knots. The more tiles you use, the more stars you earn: beat the Tailor for the medal."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vous ne pouvez pas repasser sur une case déjà utilisée. Vous avez trois fils : si vous dépassez la somme, le fil se rompt ; si vous n'avez plus d'issue, il se noue. Plus vous utilisez de cases, plus vous gagnez d'étoiles : battez le Tailleur pour la médaille."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No puedes volver a pasar por una casilla ya usada. Tienes tres hilos: si te pasas de la suma, el hilo se rompe; si te quedas sin salidas, se anuda. Cuantas más casillas uses, más estrellas consigues: supera al Sastre para ganar la medalla."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Du kannst kein Feld zweimal benutzen. Du hast drei Fäden: Überschreitest du die Summe, reißt der Faden; gibt es keinen Ausweg mehr, verknotet er sich. Je mehr Felder du nutzt, desto mehr Sterne bekommst du: Schlag den Schneider für die Medaille."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "不能重复经过已用过的格子。你有三根线：超过总和，线会断；无路可走，线会打结。用的格子越多，星星越多：超过裁缝即可获得奖牌。"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Você não pode passar de novo por uma casa já usada. Você tem três fios: se passar da soma, o fio rompe; se ficar sem saída, ele dá nó. Quanto mais casas usar, mais estrelas ganha: supere o Alfaiate para levar a medalha."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "一度使ったマスは通れません。糸は3本。合計を超えると糸が切れ、行き止まりになると結ばれます。使うマスが多いほど星が増えます。仕立て屋を上回ればメダルです。"
-          }
-        }
-      }
-    },
     "Rivedi esempio": {
       "extractionState": "manual",
       "localizations": {
@@ -9100,6 +8941,514 @@
           "stringUnit": {
             "state": "translated",
             "value": "マスごとに控えめな音が鳴ります。"
+          }
+        }
+      }
+    },
+    "Somma da raggiungere": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Somma da raggiungere"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target to reach"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Somme à atteindre"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suma por alcanzar"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zielsumme"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标总和"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soma a alcançar"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目標の合計"
+          }
+        }
+      }
+    },
+    "Percentuale di vittorie": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Percentuale di vittorie"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Win rate"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taux de victoire"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Porcentaje de victorias"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siegquote"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "胜率"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taxa de vitórias"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "勝率"
+          }
+        }
+      }
+    },
+    "Non puoi ripassare su una casella già usata.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non puoi ripassare su una casella già usata."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can't cross a tile you've already used."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous ne pouvez pas repasser sur une case déjà utilisée."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No puedes volver a pasar por una casilla ya usada."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Du kannst kein Feld zweimal benutzen."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不能重复经过已用过的格子。"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você não pode passar de novo por uma casa já usada."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一度使ったマスは通れません。"
+          }
+        }
+      }
+    },
+    "Hai tre fili: se superi la somma il filo si spezza, se resti senza uscite si annoda.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hai tre fili: se superi la somma il filo si spezza, se resti senza uscite si annoda."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You have three threads: go over the target and the thread breaks; run out of moves and it knots."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous avez trois fils : si vous dépassez la somme, le fil se rompt ; si vous n'avez plus d'issue, il se noue."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tienes tres hilos: si te pasas de la suma, el hilo se rompe; si te quedas sin salidas, se anuda."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Du hast drei Fäden: Überschreitest du die Summe, reißt der Faden; gibt es keinen Ausweg mehr, verknotet er sich."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你有三根线：超过总和，线会断；无路可走，线会打结。"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você tem três fios: se passar da soma, o fio rompe; se ficar sem saída, ele dá nó."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "糸は3本。合計を超えると糸が切れ、行き止まりになると結ばれます。"
+          }
+        }
+      }
+    },
+    "Più caselle usi, più stelle ottieni: supera il Sarto per la medaglia.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Più caselle usi, più stelle ottieni: supera il Sarto per la medaglia."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The more tiles you use, the more stars you earn: beat the Tailor for the medal."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plus vous utilisez de cases, plus vous gagnez d'étoiles : battez le Tailleur pour la médaille."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuantas más casillas uses, más estrellas consigues: supera al Sastre para ganar la medalla."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je mehr Felder du nutzt, desto mehr Sterne bekommst du: Schlag den Schneider für die Medaille."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用的格子越多，星星越多：超过裁缝即可获得奖牌。"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quanto mais casas usar, mais estrelas ganha: supere o Alfaiate para levar a medalha."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使うマスが多いほど星が増えます。仕立て屋を上回ればメダルです。"
+          }
+        }
+      }
+    },
+    "%lld fili rimasti": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld filo rimasto"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld fili rimasti"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld thread left"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld threads left"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld fil restant"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld fils restants"
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld hilo restante"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld hilos restantes"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Faden übrig"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Fäden übrig"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "剩余 %lld 根线"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld fio restante"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld fios restantes"
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "残りの糸 %lld 本"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Perfetto.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perfetto."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perfect."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parfait."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perfecto."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perfekt."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完美。"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perfeito."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完璧。"
+          }
+        }
+      }
+    },
+    "Quasi. Riprova.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quasi. Riprova."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Almost. Try again."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Presque. Réessayez."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Casi. Inténtalo de nuevo."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fast. Versuch es noch mal."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "差一点。再试一次。"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quase. Tente de novo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "惜しい。もう一度。"
           }
         }
       }

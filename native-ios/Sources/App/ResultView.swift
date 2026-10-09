@@ -8,6 +8,7 @@ struct ResultView: View {
     @EnvironmentObject private var vm: GameViewModel
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     // Fasi della sequenza d'ingresso (§6.4 / §8).
     @State private var titoloVisibile = false
@@ -40,6 +41,13 @@ struct ResultView: View {
             : Punteggio.stelle(caselle: caselle, lSarto: L).stelle
     }
 
+    /// ROUND2 §8: ≈ 720 pt sui dispositivi da 956 pt (limitata allo spazio
+    /// disponibile); con Dynamic Type molto grande la scheda è `.large` e il
+    /// contenuto scorre.
+    private var detents: Set<PresentationDetent> {
+        dynamicTypeSize >= .xxLarge ? [.large] : [.custom(AltezzaSchedaRisultato.self)]
+    }
+
     var body: some View {
         GeometryReader { geo in
             let margine = FiloMetrics.margin(forWidth: geo.size.width)
@@ -48,19 +56,21 @@ struct ResultView: View {
                     .padding(.leading, margine)
                     .padding(.trailing, max(0, margine - 10))
 
-                ScrollView {
-                    contenuto
-                        .padding(.horizontal, margine)
-                        .padding(.bottom, FiloMetrics.sectionGap)
-                        .frame(maxWidth: 480)
-                        .frame(maxWidth: .infinity)
+                GeometryReader { area in
+                    ScrollView {
+                        contenuto
+                            .padding(.horizontal, margine)
+                            .padding(.bottom, FiloMetrics.sectionGap)   // countdown a 24 pt dal fondo
+                            .frame(maxWidth: 480)
+                            .frame(maxWidth: .infinity, minHeight: area.size.height, alignment: .top)
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
                 }
-                .scrollBounceBehavior(.basedOnSize)
             }
             .padding(.top, 8)
         }
         .background { Theme.surface.ignoresSafeArea() }
-        .presentationDetents([.fraction(0.9)])
+        .presentationDetents(detents)
         .presentationCornerRadius(FiloMetrics.sheetCorner)
         .presentationBackground(Theme.surface)
         .preferredColorScheme(.dark)
@@ -106,8 +116,8 @@ struct ResultView: View {
             .opacity(titoloVisibile ? 1 : 0)
 
             // Stelle (3 × 32, gap 12; non guadagnate = contorno)
-            StarRow(earned: stelle, visible: stelleVisibili)
-                .padding(.top, FiloMetrics.sectionGap)
+            StarRow(earned: stelle, visible: stelleVisibili, size: 32, spacing: 12)
+                .padding(.top, FiloMetrics.relatedGapLarge)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(etichettaStelleAccessibile)
                 .accessibilityHidden(!vinta)
@@ -144,17 +154,20 @@ struct ResultView: View {
                         .foregroundStyle(Theme.textTertiary)
                 }
             }
-            .padding(.top, FiloMetrics.sectionGap)
+            .padding(.top, FiloMetrics.relatedGapLarge)
             .opacity(titoloVisibile ? 1 : 0)
             .accessibilityElement(children: .combine)
 
-            // Mini-griglia 168 pt, solo tessere
-            MiniGridView()
+            // Mosaico 156 pt, solo tessere
+            MiniGridView(lato: 156)
                 .padding(.top, FiloMetrics.sectionGap)
                 .opacity(titoloVisibile ? 1 : 0)
                 .accessibilityHidden(true)
 
-            // CTA
+            // Spazio flessibile: le CTA restano in fondo alla scheda.
+            Spacer(minLength: FiloMetrics.sectionGap)
+
+            // CTA (56) + statistiche (44) + countdown
             VStack(spacing: FiloMetrics.relatedGap) {
                 ShareLink(item: vm.shareText) {
                     Text("Condividi il risultato")
@@ -167,6 +180,7 @@ struct ResultView: View {
                     Text("Vedi le statistiche")
                 }
                 .buttonStyle(TertiaryButtonStyle(color: Theme.textPrimary))
+                .frame(minHeight: 44)
 
                 // Countdown al prossimo FILO (mezzanotte locale), aggiornato dal vivo
                 TimelineView(.everyMinute) { ctx in
@@ -176,9 +190,8 @@ struct ResultView: View {
                         .foregroundStyle(Theme.textTertiary)
                         .multilineTextAlignment(.center)
                 }
-                .padding(.top, FiloMetrics.relatedGap)
+                .padding(.top, 4)
             }
-            .padding(.top, FiloMetrics.sectionGapLarge)
             .opacity(ctaVisibili ? 1 : 0)
             .offset(y: ctaVisibili || reduceMotion ? 0 : 8)
         }
@@ -296,12 +309,21 @@ struct ResultView: View {
     }
 }
 
-/// Mini-griglia 5×5 (168 pt, gap 3): solo tessere, niente numeri né ordine.
+/// Altezza della scheda Risultato: 720 pt sui dispositivi alti (956 pt),
+/// ≈ 82 % dello spazio sui più bassi, mai sotto 620 pt né oltre il massimo.
+private struct AltezzaSchedaRisultato: CustomPresentationDetent {
+    static func height(in context: Context) -> CGFloat? {
+        let massimo = context.maxDetentValue
+        return min(massimo, max(620, min(720, massimo * 0.82)))
+    }
+}
+
+/// Mini-griglia 5×5 (mosaico, 156 pt di default, gap 3): solo tessere, niente numeri né ordine.
 /// Vittoria: tessere del mio filo in oro. Sconfitta: tessere del percorso del
 /// Sarto nel colore Sarto (pergamena tenue).
 struct MiniGridView: View {
     @EnvironmentObject private var vm: GameViewModel
-    var lato: CGFloat = 168
+    var lato: CGFloat = 156
 
     var body: some View {
         let gap: CGFloat = 3

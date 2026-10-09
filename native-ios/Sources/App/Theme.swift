@@ -34,6 +34,10 @@ struct Palette: Equatable {
     var cellSelected: Color = Color(hexRGB: 0x2F4056)
     /// Testo su oro (mai bianco).
     var onGold: Color = Color(hexRGB: 0x182235)
+    /// Bordo 1 pt della tessera sul filo (l'oro resta al filo e ai nodi).
+    var cellSelectedStroke: Color = Color(hexRGB: 0x73674F)
+    /// Contorno 1,5 pt delle cifre delle tessere (niente disco dietro).
+    var tileNumberOutline: Color = Color(hexRGB: 0x2F4056)
 
     /// Gradiente verticale pulito dello sfondo: bg2 (in alto) → bg (in basso).
     var bgGradient: LinearGradient {
@@ -191,6 +195,10 @@ enum Theme {
     static var cell: Color          { current.cell }
     static var cellSelected: Color  { current.cellSelected }
     static var onGold: Color        { current.onGold }
+    /// #73674F — bordo 1 pt della tessera selezionata.
+    static var cellSelectedStroke: Color { current.cellSelectedStroke }
+    /// #2F4056 — contorno 1,5 pt delle cifre delle tessere.
+    static var tileNumberOutline: Color  { current.tileNumberOutline }
     static var surfaceRaised: Color { current.surface2 }
     static var stroke: Color        { current.border }
     static var gold: Color          { current.filo }

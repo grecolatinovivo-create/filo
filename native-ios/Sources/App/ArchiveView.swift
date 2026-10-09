@@ -245,15 +245,18 @@ struct ArchiveView: View {
                     .fixedSize()
                     .frame(minWidth: 44, alignment: .leading)
                 VStack(alignment: .leading, spacing: 4) {
+                    // ROUND2 §12: data SF Pro Medium 15 primario; "Somma · Sarto"
+                    // Regular 13 secondario.
                     Text(verbatim: g.etichettaRiga)
-                        .fontWeight(.semibold)
+                        .fontWeight(.medium)
                         .filoFont(.body)
-                        .foregroundStyle(Theme.text)
+                        .foregroundStyle(Theme.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                     Text("Somma \(g.somma) · Sarto \(g.lSarto)")
+                        .fontWeight(.regular)
                         .filoFont(.caption)
-                        .foregroundStyle(Theme.textMuted)
+                        .foregroundStyle(Theme.textSecondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
@@ -263,7 +266,6 @@ struct ArchiveView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
-            .background(FiloCardBackground(radius: 16))
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(RigaArchivioStyle())
@@ -289,7 +291,7 @@ struct ArchiveView: View {
             HStack(spacing: 6) {
                 Text("Da giocare")
                     .filoFont(.caption)
-                    .foregroundStyle(Theme.textTertiary)
+                    .foregroundStyle(Theme.textSecondary)
                 Image(systemName: "chevron.right")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Theme.textTertiary)
@@ -464,11 +466,15 @@ private enum FormatoArchivio {
     }
 }
 
-/// Pressione della riga d'archivio: leggera attenuazione (niente scale).
+/// Riga d'archivio (ROUND2 §12): fondo surface che passa a surfaceRaised
+/// quando premuta (0,12 s), bordo 1 pt come le card. Niente scale.
 private struct RigaArchivioStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .opacity(configuration.isPressed ? 0.7 : 1)
+            .background(
+                FiloCardBackground(radius: 16,
+                                   fill: configuration.isPressed ? Theme.surfaceRaised : Theme.surface)
+            )
             .animation(FiloMotion.press, value: configuration.isPressed)
     }
 }
@@ -799,8 +805,8 @@ private struct ArchiveBoard: View {
             .contentShape(Rectangle())
             .gesture(dragGesture(side: side))
         }
+        .frame(maxWidth: BoardMetrics.maxWidth, maxHeight: BoardMetrics.maxWidth)
         .aspectRatio(1, contentMode: .fit)
-        .frame(maxWidth: BoardMetrics.maxWidth)
         .onChange(of: session.engine.filo.count) { vecchio, nuovo in
             casellaAggiunta(vecchio: vecchio, nuovo: nuovo)
         }

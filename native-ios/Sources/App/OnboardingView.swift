@@ -43,18 +43,25 @@ struct ComeSiGiocaContenuto<CTA: View>: View {
                 VStack(alignment: .leading, spacing: FiloMetrics.sectionGap) {
                     header
 
-                    VStack(alignment: .leading, spacing: 20) {
+                    // ROUND2 §13: 24 pt tra i passi numerati.
+                    VStack(alignment: .leading, spacing: FiloMetrics.sectionGap) {
                         PassoGuida(numero: 1,
                                    titolo: "Collega le caselle",
-                                   testo: "Traccia un filo in orizzontale o in verticale. Mai in diagonale.")
+                                   paragrafi: [LocalizedStringKey("Traccia un filo in orizzontale o in verticale. Mai in diagonale.")])
                         PassoGuida(numero: 2,
                                    titolo: "Raggiungi la somma esatta",
-                                   testo: "Ogni casella aggiunge il suo numero. Devi raggiungere esattamente l'obiettivo.") {
+                                   paragrafi: [LocalizedStringKey("Ogni casella aggiunge il suo numero. Devi raggiungere esattamente l'obiettivo.")]) {
                             esempio
                         }
+                        // Passo 3 in tre paragrafi: caselle già usate / tre fili
+                        // e fallimenti / stelle e Sarto.
                         PassoGuida(numero: 3,
                                    titolo: "Ogni casella conta",
-                                   testo: "Non puoi ripassare su una casella già usata. Hai tre fili: se superi la somma il filo si spezza, se resti senza uscite si annoda. Più caselle usi, più stelle ottieni: supera il Sarto per la medaglia.")
+                                   paragrafi: [
+                                       LocalizedStringKey("Non puoi ripassare su una casella già usata."),
+                                       LocalizedStringKey("Hai tre fili: se superi la somma il filo si spezza, se resti senza uscite si annoda."),
+                                       LocalizedStringKey("Più caselle usi, più stelle ottieni: supera il Sarto per la medaglia.")
+                                   ])
                     }
 
                     DemoView()
@@ -138,19 +145,20 @@ extension ComeSiGiocaContenuto where CTA == EmptyView {
     }
 }
 
-/// Un passo della guida: pallino col numero, titolo 18 semibold, testo 15
-/// secondario, contenuto extra opzionale. Un solo elemento VoiceOver.
+/// Un passo della guida: pallino col numero, titolo 18 semibold, uno o più
+/// paragrafi SF Pro 15 secondari (interlinea ≈ 21 pt, 12 pt tra paragrafi),
+/// contenuto extra opzionale. Un solo elemento VoiceOver.
 private struct PassoGuida<Extra: View>: View {
     let numero: Int
     let titolo: LocalizedStringKey
-    let testo: LocalizedStringKey
+    let paragrafi: [LocalizedStringKey]
     private let extra: Extra
 
-    init(numero: Int, titolo: LocalizedStringKey, testo: LocalizedStringKey,
+    init(numero: Int, titolo: LocalizedStringKey, paragrafi: [LocalizedStringKey],
          @ViewBuilder extra: () -> Extra) {
         self.numero = numero
         self.titolo = titolo
-        self.testo = testo
+        self.paragrafi = paragrafi
         self.extra = extra()
     }
 
@@ -168,10 +176,15 @@ private struct PassoGuida<Extra: View>: View {
                     .filoFont(.cardTitle)
                     .foregroundStyle(Theme.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
-                Text(testo)
-                    .filoFont(.body)
-                    .foregroundStyle(Theme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(paragrafi.indices, id: \.self) { i in
+                        Text(paragrafi[i])
+                            .filoFont(.body)
+                            .lineSpacing(3)   // 15 pt → interlinea ≈ 21 pt
+                            .foregroundStyle(Theme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
                 extra
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -181,10 +194,10 @@ private struct PassoGuida<Extra: View>: View {
 }
 
 extension PassoGuida where Extra == EmptyView {
-    init(numero: Int, titolo: LocalizedStringKey, testo: LocalizedStringKey) {
+    init(numero: Int, titolo: LocalizedStringKey, paragrafi: [LocalizedStringKey]) {
         self.numero = numero
         self.titolo = titolo
-        self.testo = testo
+        self.paragrafi = paragrafi
         self.extra = EmptyView()
     }
 }

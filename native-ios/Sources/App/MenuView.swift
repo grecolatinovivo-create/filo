@@ -76,34 +76,43 @@ struct MenuView: View {
 
                 VStack(spacing: 0) {
                     header
-                        .padding(.horizontal, max(4, margin - 12))
+                        .padding(.trailing, max(4, margin - 12))
+                        .padding(.leading, margin)
                         .opacity(entrato ? 1 : 0)
                         .animation(entrataAnimazione(ritardo: 0), value: entrato)
 
+                    // Composizione (ROUND2 §5): header in alto, logo + claim
+                    // centrati nello spazio flessibile, card ancorate in basso
+                    // 32 pt sopra la safe area. Schermi piccoli o testo
+                    // grande: la ScrollView scorre.
                     ScrollView {
                         VStack(spacing: 0) {
+                            Spacer(minLength: corto ? 16 : 24)
+
                             logo
                                 .opacity(entrato ? 1 : 0)
                                 .offset(y: entrato || reduceMotion ? 0 : 6)
                                 .animation(entrataAnimazione(ritardo: 0, durata: 0.45), value: entrato)
 
-                            dailyCard
-                                .padding(.top, corto ? 24 : 40)
-                                .opacity(entrato ? 1 : 0)
-                                .offset(y: entrato || reduceMotion ? 0 : 8)
-                                .animation(entrataAnimazione(ritardo: 0.12), value: entrato)
+                            Spacer(minLength: corto ? 24 : 32)
 
-                            salitaCard
-                                .padding(.top, 16)
-                                .opacity(entrato ? 1 : 0)
-                                .offset(y: entrato || reduceMotion ? 0 : 8)
-                                .animation(entrataAnimazione(ritardo: 0.20), value: entrato)
+                            VStack(spacing: FiloMetrics.relatedGapLarge) {
+                                dailyCard
+                                    .opacity(entrato ? 1 : 0)
+                                    .offset(y: entrato || reduceMotion ? 0 : 8)
+                                    .animation(entrataAnimazione(ritardo: 0.12), value: entrato)
+
+                                salitaCard
+                                    .opacity(entrato ? 1 : 0)
+                                    .offset(y: entrato || reduceMotion ? 0 : 8)
+                                    .animation(entrataAnimazione(ritardo: 0.20), value: entrato)
+                            }
                         }
                         .frame(maxWidth: 480)
                         .padding(.horizontal, margin)
-                        .padding(.vertical, corto ? 8 : 16)
+                        .padding(.bottom, corto ? 16 : FiloMetrics.sectionGapLarge)
                         .frame(maxWidth: .infinity,
-                               minHeight: max(0, geo.size.height - FiloMetrics.headerHeight - 48))   // centro ottico un po' più in alto
+                               minHeight: max(0, geo.size.height - FiloMetrics.headerHeight))
                     }
                     .scrollBounceBehavior(.basedOnSize)
                 }
@@ -162,26 +171,30 @@ struct MenuView: View {
         .preferredColorScheme(.dark)
     }
 
-    /// Animazione d'entrata (spec §6.2/§8). Riduci Movimento: dissolvenza 0,15 s.
-    private func entrataAnimazione(ritardo: Double, durata: Double = 0.32) -> Animation {
+    /// Animazione d'entrata (spec §6.2/§8, ROUND2 §5: fade + 8 pt, 0,30 s).
+    /// Riduci Movimento: dissolvenza 0,15 s.
+    private func entrataAnimazione(ritardo: Double, durata: Double = 0.30) -> Animation {
         reduceMotion ? FiloMotion.reduced : .easeOut(duration: durata).delay(ritardo)
     }
 
-    // MARK: Header (48 pt, icone 44×44 allineate a destra)
+    // MARK: Header (48 pt, icone 44×44 allineate a destra, gap 8)
 
+    /// ROUND2 §10: SF Symbols 20 pt medium, textSecondary, area 44×44, 8 pt
+    /// tra le aree di tocco; il glifo dell'ultima icona cade sul margine di
+    /// 24 pt. Etichette d'accessibilità invariate (test UI).
     private var header: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: FiloMetrics.relatedGap) {
             Spacer(minLength: 0)
-            FiloIconButton(systemName: "chart.bar", label: "Statistiche") {
+            HomeIconButton(systemName: "chart.bar", label: LocalizedStringKey("Statistiche")) {
                 vm.scheda = .statistiche
             }
-            FiloIconButton(systemName: "square.grid.2x2", label: "Archivio") {
+            HomeIconButton(systemName: "archivebox", label: LocalizedStringKey("Archivio")) {
                 vm.scheda = .archivio
             }
-            FiloIconButton(systemName: "questionmark.circle", label: "Come si gioca") {
+            HomeIconButton(systemName: "questionmark.circle", label: LocalizedStringKey("Come si gioca")) {
                 vm.scheda = .comeSiGioca
             }
-            FiloIconButton(systemName: "gearshape", label: "Impostazioni") {
+            HomeIconButton(systemName: "gearshape", label: LocalizedStringKey("Impostazioni")) {
                 vm.scheda = .profilo
             }
         }
@@ -238,12 +251,22 @@ struct MenuView: View {
                         .foregroundStyle(Theme.text)
                         .padding(.top, 16)
                 } else {
+                    // ROUND2 §4: etichetta → 4 pt → numero 56 → 8 pt → Sarto.
+                    Text("Somma da raggiungere")
+                        .fontWeight(.regular)
+                        .filoFont(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                        .padding(.top, 10)
+
                     HStack(alignment: .center, spacing: 12) {
-                        Text("Somma \(numeroObiettivo)")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(Theme.textMuted)
+                        Text(verbatim: "\(vm.puzzle.T)")
+                            .font(.system(size: 56, weight: .bold, design: .rounded))
+                            .kerning(-1.5)
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.gold)
                             .lineLimit(1)
                             .minimumScaleFactor(0.6)
+                            .padding(.vertical, -4)   // interlinea ottica del numero grande
                         Spacer(minLength: 0)
                         if completato {
                             if vm.engine.stato == .vinta {
@@ -259,6 +282,7 @@ struct MenuView: View {
                         .filoFont(.body)
                         .foregroundStyle(Theme.textMuted)
                         .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 8)
                 }
 
                 // "Bottone" primario visivo: l'azione è quella dell'intera card.
@@ -272,7 +296,7 @@ struct MenuView: View {
                         RoundedRectangle(cornerRadius: FiloMetrics.buttonRadius, style: .continuous)
                             .fill(Theme.gold)
                     )
-                    .padding(.top, 20)
+                    .padding(.top, FiloMetrics.relatedGapLarge)
 
                 if completato {
                     TimelineView(.periodic(from: .now, by: 15)) { ctx in
@@ -296,15 +320,6 @@ struct MenuView: View {
         .accessibilityLabel(completato
             ? String(localized: "FILO del giorno, già completato, si rinnova a mezzanotte")
             : String(localized: "FILO del giorno, disponibile"))
-    }
-
-    /// Numero obiettivo in SF Rounded 64 bold oro, interpolato nella chiave
-    /// "Somma %@" (l'ordine delle parole resta localizzabile).
-    private var numeroObiettivo: Text {
-        Text(verbatim: "\(vm.puzzle.T)")
-            .font(FiloFont.target())
-            .kerning(-1.5)
-            .foregroundStyle(Theme.gold)
     }
 
     private func titoloAzioneDaily(completato: Bool) -> LocalizedStringKey {
@@ -353,7 +368,8 @@ struct MenuView: View {
                     .foregroundStyle(Theme.textTertiary)
                     .accessibilityHidden(true)
             }
-            .padding(FiloMetrics.cardPadding)
+            .padding(.horizontal, FiloMetrics.cardPadding)
+            .padding(.vertical, 12)
             .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
             .background(FiloCardBackground(radius: FiloMetrics.cardRadius))
             .contentShape(RoundedRectangle(cornerRadius: FiloMetrics.cardRadius, style: .continuous))
@@ -411,6 +427,34 @@ struct MenuView: View {
             t.disablesAnimations = true
             withTransaction(t) { nascondi() }
         }
+    }
+}
+
+/// Icona dell'header della Home (ROUND2 §10): SF Symbol 20 pt medium
+/// textSecondary in un'area 44×44; premuta: opacità 0,65 in 0,12 s.
+private struct HomeIconButton: View {
+    let systemName: String
+    let label: LocalizedStringKey
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundStyle(Theme.textSecondary)
+                .frame(width: FiloMetrics.minTouch, height: FiloMetrics.minTouch)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(HomeIconPressStyle())
+        .accessibilityLabel(Text(label))
+    }
+}
+
+private struct HomeIconPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.65 : 1)
+            .animation(FiloMotion.press, value: configuration.isPressed)
     }
 }
 

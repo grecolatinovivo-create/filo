@@ -76,7 +76,7 @@ private struct SfidaPratica: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var session: PracticeSession
     @State private var vinta = false
-    @State private var messaggio: String?
+    @State private var feedback: String?
 
     init(target: Int, indice: Int, totale: Int, ultima: Bool,
          onVittoria: @escaping () -> Void) {
@@ -89,49 +89,69 @@ private struct SfidaPratica: View {
         _session = StateObject(wrappedValue: PracticeSession(puzzle: puzzle))
     }
 
+    /// Altezza misurata di consegna + HUD (dimensionamento della griglia).
+    @State private var altezzaTesta: CGFloat = 200
+
+    /// Messaggio (22) + spazi (2 × 16) + CTA (56): sotto la griglia.
+    private var altezzaControlli: CGFloat { 22 + 16 + 16 + FiloMetrics.primaryHeight }
+
     var body: some View {
-        VStack(spacing: FiloMetrics.relatedGapLarge) {
-            VStack(spacing: FiloMetrics.relatedGap) {
-                Text("Sfida \(indice + 1) di \(totale)")
-                    .eyebrowStyle()
-                Text("Traccia un filo che faccia esattamente \(target).")
-                    .filoFont(.body)
-                    .foregroundStyle(Theme.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(.top, FiloMetrics.relatedGap)
+        // Stessa composizione della Partita (ROUND2 §6): consegna + HUD in
+        // alto, griglia + feedback + CTA centrati nello spazio che resta.
+        GeometryReader { area in
+            let larghezza = GameScreenMetrics.larghezzaGriglia(contenitore: area.size.width, margine: 0)
+            let lato = GameScreenMetrics.latoGriglia(larghezza: larghezza,
+                                                     altezzaDisponibile: area.size.height,
+                                                     altezzaHUD: altezzaTesta,
+                                                     altezzaControlli: altezzaControlli)
+            ScrollView {
+                GameScreenLayout(altezzaMinima: area.size.height) {
+                    VStack(spacing: FiloMetrics.relatedGapLarge) {
+                        VStack(spacing: FiloMetrics.relatedGap) {
+                            Text("Sfida \(indice + 1) di \(totale)")
+                                .eyebrowStyle()
+                            Text("Traccia un filo che faccia esattamente \(target).")
+                                .filoFont(.body)
+                                .foregroundStyle(Theme.textSecondary)
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(.top, FiloMetrics.relatedGap)
 
-            hud
-
-            // La board si adatta all'altezza disponibile (aspectRatio .fit).
-            PracticeBoardView(session: session, onMove: gestisci)
-                .frame(maxWidth: BoardMetrics.maxWidth)
-                .layoutPriority(1)
-
-            Text(messaggio ?? " ")
-                .filoFont(.body)
-                .foregroundStyle(vinta ? Theme.success : Theme.textSecondary)
-                .frame(minHeight: 22)
-                .animation(FiloMotion.adaptive(FiloMotion.screen, reduceMotion: reduceMotion), value: messaggio)
-
-            // Spazio riservato alla CTA: la board non salta quando compare.
-            ZStack {
-                if vinta {
-                    Button(ultima ? String(localized: "Inizia a giocare")
-                                  : String(localized: "Prossima sfida")) {
-                        FiloHaptics.light()
-                        onVittoria()
+                        hud
                     }
-                    .buttonStyle(PrimaryButtonStyle(fullWidth: true))
-                    .transition(.opacity)
+                    .frame(maxWidth: larghezza)
+                    .misuraAltezza($altezzaTesta)
+
+                    VStack(spacing: FiloMetrics.relatedGapLarge) {
+                        PracticeBoardView(session: session, onMove: gestisci)
+                            .frame(width: lato, height: lato)
+
+                        Text(feedback ?? " ")
+                            .filoFont(.body)
+                            .foregroundStyle(vinta ? Theme.success : Theme.textSecondary)
+                            .frame(minHeight: 22)
+                            .animation(FiloMotion.adaptive(FiloMotion.screen, reduceMotion: reduceMotion), value: feedback)
+
+                        // Spazio riservato alla CTA: la board non salta quando compare.
+                        ZStack {
+                            if vinta {
+                                Button(ultima ? String(localized: "Inizia a giocare")
+                                              : String(localized: "Prossima sfida")) {
+                                    FiloHaptics.light()
+                                    onVittoria()
+                                }
+                                .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                                .transition(.opacity)
+                            }
+                        }
+                        .frame(maxWidth: lato, minHeight: FiloMetrics.primaryHeight)
+                        .animation(FiloMotion.adaptive(FiloMotion.screen, reduceMotion: reduceMotion), value: vinta)
+                    }
                 }
             }
-            .frame(minHeight: FiloMetrics.primaryHeight)
-            .animation(FiloMotion.adaptive(FiloMotion.screen, reduceMotion: reduceMotion), value: vinta)
-            .padding(.bottom, FiloMetrics.relatedGap)
+            .scrollBounceBehavior(.basedOnSize)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var hud: some View {
@@ -143,25 +163,12 @@ private struct SfidaPratica: View {
                 .foregroundStyle(vinta ? Theme.success : Theme.gold)
                 .animation(.easeOut(duration: 0.25), value: vinta)
                 .accessibilityLabel(Text("Obiettivo: \(target)"))
-            HStack(alignment: .firstTextBaseline, spacing: FiloMetrics.relatedGap) {
-                Text("Somma attuale")
-                    .filoFont(.caption)
-                    .foregroundStyle(Theme.textSecondary)
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(verbatim: "\(session.somma)")
-                        .filoFont(.currentSum)
-                        .monospacedDigit()
-                        .foregroundStyle(vinta ? Theme.success : Theme.textPrimary)
-                        .contentTransition(.numericText())
-                        .animation(reduceMotion ? nil : FiloMotion.numeric, value: session.somma)
-                    Text(verbatim: "/ \(target)")
-                        .filoFont(.body)
-                        .monospacedDigit()
-                        .foregroundStyle(Theme.textTertiary)
-                }
-            }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text("Somma attuale: \(session.somma) di \(target)"))
+            // Stessa metrica "Somma attuale" di Partita e Salita.
+            GameHUDMetric(somma: session.somma,
+                          totale: target,
+                          coloreValore: vinta ? Theme.success : Theme.textPrimary,
+                          etichetta: Text("Somma attuale: \(session.somma) di \(target)"))
+                .padding(.top, 4)
         }
     }
 
@@ -171,9 +178,9 @@ private struct SfidaPratica: View {
             guard !vinta else { return }
             vinta = true
             session.blocca()
-            messaggio = String(localized: "Perfetto.")
+            feedback = String(localized: "Perfetto.")
         case .spezzato, .annodato:
-            messaggio = String(localized: "Quasi. Riprova.")
+            feedback = String(localized: "Quasi. Riprova.")
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 500_000_000)
                 if !vinta { session.ripulisci() }

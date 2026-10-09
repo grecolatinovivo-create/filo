@@ -193,6 +193,12 @@ enum FiloMotion {
     static let cut = Animation.easeIn(duration: 0.30)
     /// Vita persa (nodo che si svuota).
     static let lifeLost = Animation.easeOut(duration: 0.18)
+    /// Nodo estremo del filo (spostamento/comparsa).
+    static let node = Animation.spring(response: 0.24, dampingFraction: 0.78)
+    /// Indicatori fili/vite: consumo in dissolvenza 0,18 s easeOut.
+    static let indicator = Animation.easeOut(duration: 0.18)
+    /// Intervallo (s) fra le stelle del risultato.
+    static let starInterval: Double = 0.18
     /// Fade unico con Riduci Movimento.
     static let reduced = Animation.easeInOut(duration: 0.15)
     /// Durate (s) utili per le sequenze temporizzate.
@@ -205,11 +211,17 @@ enum FiloMotion {
     }
 }
 
-// MARK: - Haptics (spec §4, §8)
+// MARK: - Haptics (spec §4, §8, ROUND2 #14)
 
 /// Servizio haptics unico. Rispetta l'interruttore `filo.haptics` (default
-/// acceso). Generatori creati una volta e preparati in anticipo. La
-/// selezione è limitata a una ogni 80 ms.
+/// acceso). Generatori creati una volta e preparati in anticipo.
+/// Anti-doppioni:
+/// - selezione limitata a una ogni 90 ms;
+/// - un solo haptic d'ESITO (success/warning/error/medium) per finestra di
+///   0,30 s: se due chiamanti segnalano lo stesso evento (es. filo perso +
+///   vita persa) vibra solo il primo;
+/// - nessuna selezione nei 120 ms successivi a un esito (la casella che
+///   chiude il filo non vibra due volte).
 @MainActor
 enum FiloHaptics {
     /// Chiave UserDefaults dell'interruttore "Vibrazione" (default true).
@@ -220,27 +232,38 @@ enum FiloHaptics {
         set { UserDefaults.standard.set(newValue, forKey: defaultsKey) }
     }
 
+    /// Intervallo minimo fra due selezioni (s).
+    static let selectionInterval: TimeInterval = 0.09
+    /// Finestra in cui un secondo haptic d'esito viene ignorato (s).
+    static let outcomeWindow: TimeInterval = 0.30
+    /// Pausa della selezione dopo un esito (s).
+    static let selectionQuietAfterOutcome: TimeInterval = 0.12
+
     private static let selectionGenerator = UISelectionFeedbackGenerator()
     private static let lightGenerator = UIImpactFeedbackGenerator(style: .light)
     private static let mediumGenerator = UIImpactFeedbackGenerator(style: .medium)
     private static let notificationGenerator = UINotificationFeedbackGenerator()
-    private static var lastSelection: TimeInterval = 0
-    private static let selectionInterval: TimeInterval = 0.08
+    private static var lastSelection: TimeInterval = -1_000
+    private static var lastOutcome: TimeInterval = -1_000
+
+    private static var now: TimeInterval { ProcessInfo.processInfo.systemUptime }
 
     /// Prepara i generatori (chiamare all'apparire di una board/schermata).
     static func prepare() {
         guard isEnabled else { return }
         selectionGenerator.prepare()
         lightGenerator.prepare()
+        mediumGenerator.prepare()
         notificationGenerator.prepare()
     }
 
-    /// Nuova casella nel filo (throttled ≥ 80 ms).
+    /// Nuova casella nel filo (throttled ≥ 90 ms, silenziosa subito dopo un esito).
     static func selection() {
         guard isEnabled else { return }
-        let now = ProcessInfo.processInfo.systemUptime
-        guard now - lastSelection >= selectionInterval else { return }
-        lastSelection = now
+        let t = now
+        guard t - lastSelection >= selectionInterval,
+              t - lastOutcome >= selectionQuietAfterOutcome else { return }
+        lastSelection = t
         selectionGenerator.selectionChanged()
         selectionGenerator.prepare()
     }
@@ -252,9 +275,9 @@ enum FiloHaptics {
         lightGenerator.prepare()
     }
 
-    /// Filo tagliato, terza stella.
+    /// Filo tagliato, terza stella (conta come esito: niente doppioni).
     static func medium() {
-        guard isEnabled else { return }
+        guard isEnabled, reclamaEsito() else { return }
         mediumGenerator.impactOccurred()
         mediumGenerator.prepare()
     }
@@ -267,9 +290,17 @@ enum FiloHaptics {
     static func error() { notify(.error) }
 
     private static func notify(_ type: UINotificationFeedbackGenerator.FeedbackType) {
-        guard isEnabled else { return }
+        guard isEnabled, reclamaEsito() else { return }
         notificationGenerator.notificationOccurred(type)
         notificationGenerator.prepare()
+    }
+
+    /// True se nessun altro esito ha vibrato negli ultimi `outcomeWindow` s.
+    private static func reclamaEsito() -> Bool {
+        let t = now
+        guard t - lastOutcome >= outcomeWindow else { return false }
+        lastOutcome = t
+        return true
     }
 }
 
@@ -634,83 +665,107 @@ struct KnotDot: View {
     }
 }
 
-/// Vite della Salita: `total` nodi d'oro (pieni = vite rimaste). Il nodo
-/// che si svuota anima in 0,18 s. Etichetta d'accessibilità invariata:
-/// "Vite rimaste: n di 3". Il testo "3 vite" / "Ultima vita" lo aggiunge
-/// il chiamante.
+/// Pallino degli indicatori fili/vite (ROUND2 #3/#9): 10 pt pieno,
+/// oro #E8C27C = disponibile, #35445C (stroke) = consumato. Decorativo.
+struct IndicatorDot: View {
+    let available: Bool
+    var size: CGFloat = 10
+
+    var body: some View {
+        Circle()
+            .fill(available ? Theme.filo : Theme.border)
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+    }
+}
+
+/// Vite della Salita (ROUND2 #9): `total` pallini 10 pt, gap 6 (oro = vita
+/// rimasta, stroke = persa; dissolvenza 0,18 s easeOut). Con
+/// `showsText: true` aggiunge a destra (gap 8) "%lld vite" (13 medium,
+/// textSecondary) oppure "Ultima vita" in colore error con 1 vita.
+/// Etichetta d'accessibilità invariata (elemento unico): "Vite rimaste: n di 3".
 struct LivesIndicator: View {
     let lives: Int
     var total: Int = 3
-    var size: CGFloat = 14
+    var size: CGFloat = 10
+    var showsText: Bool = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    init(lives: Int, total: Int = 3, size: CGFloat = 14) {
+    init(lives: Int, total: Int = 3, size: CGFloat = 10, showsText: Bool = false) {
         self.lives = lives
         self.total = total
         self.size = size
+        self.showsText = showsText
     }
 
     var body: some View {
-        HStack(spacing: 6) {
-            ForEach(0..<max(0, total), id: \.self) { i in
-                KnotDot(filled: i < lives, size: size)
+        HStack(spacing: FiloMetrics.relatedGap) {
+            HStack(spacing: 6) {
+                ForEach(0..<max(0, total), id: \.self) { i in
+                    IndicatorDot(available: i < lives, size: size)
+                }
+            }
+            if showsText {
+                Group {
+                    if lives == 1 {
+                        Text("Ultima vita")
+                            .foregroundStyle(Theme.error)
+                    } else {
+                        Text("\(lives) vite")
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
+                .filoFont(.caption)
+                .monospacedDigit()
+                .lineLimit(1)
             }
         }
-        .animation(FiloMotion.lifeLost, value: lives)
+        .animation(reduceMotion ? FiloMotion.reduced : FiloMotion.indicator, value: lives)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("Vite rimaste: \(lives) di 3"))
     }
 }
 
-/// Fili rimasti: 3 segmenti vettoriali 16 pt (oro = disponibile, stroke =
-/// usato; un filo perso mostra un piccolo segno nel colore dell'esito:
-/// spezzato = error, annodato = annodato, strappato = textTertiary).
-/// Etichetta d'accessibilità invariata: "Fili rimasti: n di 3".
+/// Fili rimasti (ROUND2 #3): 3 pallini 10 pt, gap 6 (oro #E8C27C =
+/// disponibile, #35445C = usato; consumo in dissolvenza 0,18 s easeOut) +
+/// testo "%lld fili rimasti" (it: 1 → "1 filo rimasto"; SF Pro 13 medium,
+/// textSecondary), gap 8. `showsText: false` = solo pallini.
+/// Etichetta d'accessibilità invariata (elemento unico, da tenere ULTIMO
+/// nell'HUD): "Fili rimasti: n di 3". `outcomes` è mantenuto per
+/// compatibilità (la resa dipende solo da `remaining`).
 /// Uso: `ThreadsLeftIndicator(outcomes: vm.engine.fili.map(\.esito), remaining: vm.engine.filiRimasti)`.
 struct ThreadsLeftIndicator: View {
     let outcomes: [EsitoFilo]
     let remaining: Int
     var total: Int = 3
+    var showsText: Bool = true
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    init(outcomes: [EsitoFilo], remaining: Int, total: Int = 3) {
+    init(outcomes: [EsitoFilo] = [], remaining: Int, total: Int = 3, showsText: Bool = true) {
         self.outcomes = outcomes
         self.remaining = remaining
         self.total = total
+        self.showsText = showsText
     }
 
     var body: some View {
-        HStack(spacing: 6) {
-            ForEach(0..<max(0, total), id: \.self) { i in
-                segmento(esito: i < outcomes.count ? outcomes[i] : nil)
+        HStack(spacing: FiloMetrics.relatedGap) {
+            HStack(spacing: 6) {
+                ForEach(0..<max(0, total), id: \.self) { i in
+                    IndicatorDot(available: i < remaining, size: 10)
+                }
+            }
+            if showsText {
+                Text("\(remaining) fili rimasti")
+                    .filoFont(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.textSecondary)
+                    .lineLimit(1)
             }
         }
-        .animation(FiloMotion.lifeLost, value: outcomes.count)
+        .animation(reduceMotion ? FiloMotion.reduced : FiloMotion.indicator, value: remaining)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("Fili rimasti: \(remaining) di 3"))
-    }
-
-    @ViewBuilder
-    private func segmento(esito: EsitoFilo?) -> some View {
-        let usato = esito != nil && esito != .vinto
-        ZStack {
-            Capsule()
-                .fill(usato ? Theme.border : Theme.filo)
-                .frame(width: 16, height: 5)
-            if let esito, usato {
-                Circle()
-                    .fill(colore(esito))
-                    .frame(width: 5, height: 5)
-                    .overlay(Circle().strokeBorder(Theme.bg, lineWidth: 1))
-            }
-        }
-        .frame(width: 16, height: 16)
-    }
-
-    private func colore(_ esito: EsitoFilo) -> Color {
-        switch esito {
-        case .spezzato: return Theme.spezzato
-        case .annodato: return Theme.annodato
-        default: return Theme.textTertiary
-        }
     }
 }
 

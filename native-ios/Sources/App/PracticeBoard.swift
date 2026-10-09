@@ -62,21 +62,23 @@ final class PracticeSession: ObservableObject {
 }
 
 /// Griglia 5×5 interattiva riutilizzabile, guidata da una `PracticeSession`.
-/// Stessa gestualità tap+drag e stessa resa (REDESIGN_SPEC §5) della
-/// `BoardView` del giornaliero, ma disaccoppiata da `GameViewModel`: ogni
-/// esito di mossa viene inoltrato al genitore via `onMove`.
-/// Haptics: selezione (throttled) a ogni casella nuova; con
+/// Stessa gestualità tap+drag, stessa resa e STESSE misure (REDESIGN_SPEC §5,
+/// ROUND2 #1/#2/#7) della `BoardView` del giornaliero, ma disaccoppiata da
+/// `GameViewModel`: ogni esito di mossa viene inoltrato al genitore via
+/// `onMove`. Haptics: selezione (throttled 90 ms) a ogni casella nuova; con
 /// `outcomeHaptics` (default true) anche success (somma esatta), error
 /// (spezzato), warning (annodato). Passare `outcomeHaptics: false` se la
 /// schermata emette i propri haptics d'esito (niente doppioni).
+/// `maxSide`: lato massimo della griglia (nil = 392); la griglia è quadrata
+/// e il contenitore etichettato coincide con essa.
 struct PracticeBoardView: View {
     @ObservedObject var session: PracticeSession
     var onMove: (Mossa) -> Void = { _ in }
     var outcomeHaptics: Bool = true
+    var maxSide: CGFloat? = nil
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @State private var trimFilo: CGFloat = 1
     @State private var solTrim: CGFloat = 0
     @State private var dragAttivo = false
     @State private var downSuUltima = false
@@ -86,6 +88,16 @@ struct PracticeBoardView: View {
     @State private var endScale: CGFloat = 1
     @State private var esitoLocale: EsitoLocale?
 
+    init(session: PracticeSession,
+         onMove: @escaping (Mossa) -> Void = { _ in },
+         outcomeHaptics: Bool = true,
+         maxSide: CGFloat? = nil) {
+        _session = ObservedObject(wrappedValue: session)
+        self.onMove = onMove
+        self.outcomeHaptics = outcomeHaptics
+        self.maxSide = maxSide
+    }
+
     /// Filo appena perso (la sessione lo azzera subito): resa d'uscita.
     private struct EsitoLocale: Equatable {
         let id: Int
@@ -93,9 +105,12 @@ struct PracticeBoardView: View {
         let esito: EsitoFilo
     }
 
+    private var limite: CGFloat { min(BoardMetrics.maxWidth, maxSide ?? .infinity) }
+
     var body: some View {
         GeometryReader { geo in
-            let side = BoardMetrics.side(forWidth: geo.size.width)
+            let lato = min(geo.size.width, geo.size.height)
+            let side = BoardMetrics.side(forWidth: lato)
             ZStack(alignment: .topLeading) {
                 ForEach(0..<25, id: \.self) { idx in
                     let o = BoardMetrics.origin(idx, side: side)
@@ -106,7 +121,6 @@ struct PracticeBoardView: View {
                 }
                 BoardThreadLayer(side: side,
                                  filo: session.engine.filo,
-                                 trim: trimFilo,
                                  sarto: session.revealSolution ? session.puzzle.percorsoSarto : [],
                                  sartoTrim: solTrim,
                                  endScale: endScale,
@@ -118,12 +132,13 @@ struct PracticeBoardView: View {
                                  filo: session.engine.filo,
                                  popIdx: popIdx, popScale: popScale)
             }
-            .frame(width: geo.size.width, height: geo.size.width, alignment: .topLeading)
+            .frame(width: lato, height: lato, alignment: .topLeading)
             .contentShape(Rectangle())
             .gesture(dragGesture(side: side))
         }
+        // prima il limite, poi il quadrato: frame finale = griglia
+        .frame(maxWidth: limite, maxHeight: limite)
         .aspectRatio(1, contentMode: .fit)
-        .frame(maxWidth: BoardMetrics.maxWidth)
         .onChange(of: session.engine.filo.count) { vecchio, nuovo in
             casellaAggiunta(vecchio: vecchio, nuovo: nuovo)
         }
@@ -135,7 +150,6 @@ struct PracticeBoardView: View {
         }
         .onChange(of: ObjectIdentifier(session)) { _, _ in
             esitoLocale = nil
-            trimFilo = 1
             endScale = 1
             popIdx = nil
             aggiornaSoluzione(attivo: session.revealSolution, animato: false)
@@ -148,8 +162,10 @@ struct PracticeBoardView: View {
         .accessibilityLabel("Griglia di gioco, 5 righe per 5 colonne")
     }
 
+    /// Nuova casella: selezione (throttled), prima casella con scale
+    /// 0,97 → 1. Il segmento nuovo lo cuce `BoardThreadLayer` (0,12 s).
     private func casellaAggiunta(vecchio: Int, nuovo: Int) {
-        guard nuovo > vecchio else { trimFilo = 1; return }
+        guard nuovo > vecchio else { return }
         if session.engine.stato == .inCorso { FiloHaptics.selection() }
         if nuovo == 1, let primo = session.engine.filo.first, !reduceMotion {
             popIdx = primo
@@ -159,9 +175,6 @@ struct PracticeBoardView: View {
                 withAnimation(FiloMotion.tile) { popScale = 1 }
             }
         }
-        guard nuovo >= 2, !reduceMotion else { trimFilo = 1; return }
-        trimFilo = CGFloat(nuovo - 2) / CGFloat(nuovo - 1)
-        withAnimation(FiloMotion.segment) { trimFilo = 1 }
     }
 
     private func assesta() {

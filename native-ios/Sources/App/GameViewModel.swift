@@ -43,7 +43,9 @@ final class GameViewModel: ObservableObject {
     @Published private(set) var stelleOggi = 0
     @Published private(set) var sartoBattutoOggi = false
 
-    @Published var scheda: Scheda?
+    @Published var scheda: Scheda? {
+        didSet { if let scheda { ultimaSchedaPresentata = scheda } }
+    }
     @Published var showStrappoDialog = false
     @Published private(set) var lockInput = false
     @Published private(set) var revealSarto = false
@@ -60,6 +62,10 @@ final class GameViewModel: ObservableObject {
     /// True solo al PRIMO avvio (onboarding classico non ancora fatto): abilita
     /// la catena tutorial → onboarding progressivo → daily.
     private var primoAvvio = false
+    /// Ultima scheda presentata: alla chiusura (onDismiss) distingue il
+    /// tutorial "Come si gioca" dalle altre schede (Statistiche, Profilo…),
+    /// che NON devono segnare il tutorial come visto né avviare la catena.
+    private var ultimaSchedaPresentata: Scheda?
     private let progressiveKey = "filo.onboardingProgressivoFatto"
 
     private let defaults = UserDefaults.standard
@@ -482,15 +488,20 @@ final class GameViewModel: ObservableObject {
 
     // MARK: Chiusura schede
 
-    /// Chiamata alla chiusura del tutorial: vale come visto anche con swipe (RF7).
+    /// Chiamata alla chiusura di una scheda (onDismiss). Se era il tutorial,
+    /// vale come visto anche con swipe (RF7) e avvia la catena del primo avvio.
     func onboardingChiuso() {
-        segnaOnboarded()
-        // Catena primo avvio: dopo il tutorial classico, una volta sola, mostra
-        // l'onboarding progressivo PRIMA del daily.
-        if primoAvvio && !defaults.bool(forKey: progressiveKey) {
-            primoAvvio = false
-            Task { @MainActor in self.scheda = .onboardingProgressivo }
-            return
+        if ultimaSchedaPresentata == .comeSiGioca {
+            segnaOnboarded()
+            // Catena primo avvio: dopo il tutorial classico, una volta sola,
+            // mostra l'onboarding progressivo PRIMA del daily.
+            if primoAvvio && !defaults.bool(forKey: progressiveKey) {
+                primoAvvio = false
+                Task { @MainActor in
+                    if self.scheda == nil { self.scheda = .onboardingProgressivo }
+                }
+                return
+            }
         }
         if engine.gameOver && !risultatoMostrato {
             revealSarto = true

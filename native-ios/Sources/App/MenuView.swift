@@ -39,6 +39,18 @@ struct MenuView: View {
         !vm.engine.gameOver || giornoNuovoDisponibile
     }
 
+    /// `vm.scheda` vista dal menu: nil (nessuna presentazione, nessun
+    /// onDismiss) finché il daily o la Salita coprono il menu.
+    private var schedaMenu: Binding<GameViewModel.Scheda?> {
+        Binding(
+            get: { (showDaily || showSalita) ? nil : vm.scheda },
+            set: { nuova in
+                guard !showDaily, !showSalita else { return }
+                vm.scheda = nuova
+            }
+        )
+    }
+
     private var salitaBest: Int {
         UserDefaults.standard.integer(forKey: "filo.salitaBest")
     }
@@ -66,7 +78,12 @@ struct MenuView: View {
             .frame(maxWidth: .infinity)
         }
         .overlay(TileRevealOverlay(controller: tessere))
-        .sheet(item: $vm.scheda, onDismiss: { vm.onboardingChiuso() }) { scheda in
+        // UNA sola sheet attiva per contesto: mentre il daily (o la Salita) è
+        // presentato in fullScreenCover, le schede le presenta RootView. Se
+        // anche questa sheet reagisse a `vm.scheda`, iOS impilerebbe DUE fogli
+        // identici (Menu + Root) e alla chiusura uno resterebbe orfano: a
+        // binding già nil, "Salta"/dismiss() non avrebbe più effetto.
+        .sheet(item: schedaMenu, onDismiss: { vm.onboardingChiuso() }) { scheda in
             switch scheda {
             case .comeSiGioca: OnboardingView()
             case .onboardingProgressivo: ProgressiveOnboardingView()

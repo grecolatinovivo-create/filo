@@ -1,8 +1,246 @@
 import SwiftUI
 import FiloCore
 
-/// Griglia 5×5 con overlay del filo (Path/Shape animati) e input tap + drag
-/// via DragGesture(minimumDistance: 0) — semantica README §6.2/§6.6.
+// MARK: - Metriche e layer condivisi delle board (REDESIGN_SPEC §5)
+
+/// Geometria della griglia 5×5: gap uniforme 8 pt, lato tessera =
+/// (larghezza − 32) / 5, larghezza massima 366 pt. Hit area: cella ridotta
+/// del 12 % per lato (meno falsi positivi negli angoli, come il web).
+enum BoardMetrics {
+    static let gap: CGFloat = 8
+    static let maxWidth: CGFloat = 366
+
+    static func side(forWidth width: CGFloat) -> CGFloat {
+        max(0, (width - gap * 4) / 5)
+    }
+
+    static func origin(_ idx: Int, side: CGFloat) -> CGPoint {
+        CGPoint(x: CGFloat(idx % 5) * (side + gap), y: CGFloat(idx / 5) * (side + gap))
+    }
+
+    static func center(_ idx: Int, side: CGFloat) -> CGPoint {
+        CGPoint(x: CGFloat(idx % 5) * (side + gap) + side / 2,
+                y: CGFloat(idx / 5) * (side + gap) + side / 2)
+    }
+
+    /// Diametro della maschera del numero (≈ 0,56 × lato).
+    static func maskDiameter(_ side: CGFloat) -> CGFloat { side * 0.56 }
+
+    /// Indice della cella sotto il punto (area utile ridotta del 12 %).
+    static func cell(at p: CGPoint, side: CGFloat) -> Int? {
+        let step = side + gap
+        let c = Int(floor(p.x / step)), r = Int(floor(p.y / step))
+        guard (0..<5).contains(c), (0..<5).contains(r) else { return nil }
+        let x0 = CGFloat(c) * step, y0 = CGFloat(r) * step
+        let m = side * 0.12
+        guard p.x >= x0 + m, p.x <= x0 + side - m,
+              p.y >= y0 + m, p.y <= y0 + side - m else { return nil }
+        return r * 5 + c
+    }
+}
+
+/// Nodi del filo, concentrici alla maschera del numero (visibili come anelli
+/// attorno alla cifra, perché il layer numeri sta sopra il filo).
+/// Partenza: anello oro pieno 2,5 pt a filo della maschera. Estremo
+/// corrente: anello 2 pt staccato di 3 pt (il "nodo" da 11 pt della spec,
+/// scalato alla tessera). Nessuna pulsazione.
+struct FiloNodo: View {
+    enum Tipo { case partenza, estremo }
+    let tipo: Tipo
+    let side: CGFloat
+    var colore: Color = Theme.filo
+    /// Contrazione in pt (vicolo cieco: 3).
+    var contrazione: CGFloat = 0
+
+    var body: some View {
+        let m = BoardMetrics.maskDiameter(side)
+        switch tipo {
+        case .partenza:
+            Circle()
+                .strokeBorder(colore, lineWidth: 2.5)
+                .frame(width: m + 4, height: m + 4)
+        case .estremo:
+            Circle()
+                .strokeBorder(colore, lineWidth: 2)
+                .frame(width: max(m, m + 11 - contrazione * 2), height: max(m, m + 11 - contrazione * 2))
+        }
+    }
+}
+
+/// Layer FILO della board (sotto i numeri): percorso del Sarto tratteggiato
+/// 2 pt (sotto), filo d'esito in dissolvenza, filo corrente con trim e nodi.
+/// Inerte e nascosto all'accessibilità.
+struct BoardThreadLayer: View {
+    let side: CGFloat
+    let filo: [Int]
+    var trim: CGFloat = 1
+    /// Percorso del Sarto (vuoto = nessun reveal).
+    var sarto: [Int] = []
+    var sartoTrim: CGFloat = 1
+    /// Scala del nodo finale (somma esatta: 1 → 1,08 → 1).
+    var endScale: CGFloat = 1
+    /// Filo appena perso (spezzato/annodato/strappato) da mostrare in uscita.
+    var esitoPercorso: [Int]? = nil
+    var esito: EsitoFilo? = nil
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private func c(_ idx: Int) -> CGPoint { BoardMetrics.center(idx, side: side) }
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            if sarto.count >= 2 {
+                PolylineShape(points: sarto.map(c))
+                    .trim(from: 0, to: sartoTrim)
+                    .stroke(Theme.sarto,
+                            style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round, dash: [5, 5]))
+            }
+            if let esitoPercorso, let esito, !esitoPercorso.isEmpty {
+                EsitoFiloOverlay(punti: esitoPercorso.map(c), esito: esito, side: side)
+            }
+            if let primo = filo.first, let ultimo = filo.last {
+                if filo.count >= 2 {
+                    CordaOro(punti: filo.map(c), trim: trim)
+                }
+                FiloNodo(tipo: .partenza, side: side)
+                    .position(c(primo))
+                FiloNodo(tipo: .estremo, side: side)
+                    .scaleEffect(endScale)
+                    .position(c(ultimo))
+                    .animation(reduceMotion ? nil : FiloMotion.segment, value: ultimo)
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+/// Layer NUMERI (sopra il filo): cifre con maschera del colore della
+/// tessera. Inerte e nascosto all'accessibilità.
+struct BoardNumberLayer: View {
+    let side: CGFloat
+    let valori: [Int]
+    let filo: [Int]
+    var popIdx: Int? = nil
+    var popScale: CGFloat = 1
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            ForEach(0..<25, id: \.self) { idx in
+                let acceso = filo.contains(idx)
+                let o = BoardMetrics.origin(idx, side: side)
+                NumeroCella(valore: idx < valori.count ? valori[idx] : 0, accesa: acceso)
+                    .frame(width: side, height: side)
+                    .scaleEffect(popIdx == idx ? popScale : 1)
+                    .animation(.easeInOut(duration: 0.16), value: acceso)
+                    .offset(x: o.x, y: o.y)
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+/// Filo appena perso (spec §5): spezzato = l'ultimo segmento perde tensione
+/// e svanisce (0,24 s easeIn), annodato = il nodo finale si contrae di 3 pt
+/// (spring 0,28/0,85), strappato = dissolvenza 0,30 s easeIn. Con Riduci
+/// Movimento: solo dissolvenza. Deve finire entro la durata dell'esito.
+struct EsitoFiloOverlay: View {
+    let punti: [CGPoint]
+    let esito: EsitoFilo
+    let side: CGFloat
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var opacita = 1.0
+    @State private var codaOpacita = 1.0
+    @State private var allentamento: CGFloat = 0
+    @State private var contrazione: CGFloat = 0
+
+    private var corpo: [CGPoint] {
+        if esito == .spezzato && punti.count >= 2 { return Array(punti.dropLast()) }
+        return punti
+    }
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            if corpo.count >= 2 {
+                CordaOro(punti: corpo)
+            }
+            if esito == .spezzato, punti.count >= 2 {
+                SegmentoAllentato(da: punti[punti.count - 2], a: punti[punti.count - 1],
+                                  freccia: side * 0.3, allentamento: allentamento)
+                    .stroke(Theme.spezzato,
+                            style: StrokeStyle(lineWidth: 4.5, lineCap: .round, lineJoin: .round))
+                    .opacity(codaOpacita)
+            }
+            if let primo = corpo.first {
+                FiloNodo(tipo: .partenza, side: side).position(primo)
+            }
+            if let ultimo = corpo.last {
+                FiloNodo(tipo: .estremo, side: side,
+                         colore: esito == .annodato ? Theme.annodato : Theme.filo,
+                         contrazione: contrazione)
+                    .position(ultimo)
+            }
+        }
+        .opacity(opacita)
+        .onAppear(perform: avvia)
+    }
+
+    private func avvia() {
+        if reduceMotion {
+            withAnimation(.easeIn(duration: 0.2)) { opacita = 0 }
+            return
+        }
+        switch esito {
+        case .spezzato:
+            withAnimation(FiloMotion.slack) {
+                allentamento = 1
+                codaOpacita = 0
+            }
+            withAnimation(.easeIn(duration: 0.34).delay(0.24)) { opacita = 0 }
+        case .annodato:
+            withAnimation(FiloMotion.contract) { contrazione = 3 }
+            withAnimation(.easeIn(duration: 0.3).delay(0.22)) { opacita = 0 }
+        default:
+            withAnimation(FiloMotion.cut) { opacita = 0 }
+        }
+    }
+}
+
+/// Segmento che "perde tensione": curva quadratica con freccia animabile,
+/// verso il basso (o verso destra se il segmento è verticale).
+struct SegmentoAllentato: Shape {
+    var da: CGPoint
+    var a: CGPoint
+    var freccia: CGFloat
+    var allentamento: CGFloat
+
+    var animatableData: CGFloat {
+        get { allentamento }
+        set { allentamento = newValue }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let dx = a.x - da.x, dy = a.y - da.y
+        let len = max(0.001, sqrt(dx * dx + dy * dy))
+        var nx = -dy / len, ny = dx / len
+        if ny < 0 || (abs(ny) < 0.001 && nx < 0) { nx = -nx; ny = -ny }
+        let k = freccia * allentamento
+        let ctrl = CGPoint(x: (da.x + a.x) / 2 + nx * k, y: (da.y + a.y) / 2 + ny * k)
+        var p = Path()
+        p.move(to: da)
+        p.addQuadCurve(to: a, control: ctrl)
+        return p
+    }
+}
+
+// MARK: - Board del giornaliero
+
+/// Griglia 5×5 del FILO di oggi: tessere → filo → numeri (con maschera).
+/// Input tap + drag via DragGesture(minimumDistance: 0) — semantica
+/// README §6.2/§6.6 invariata. Haptics: selezione (throttled) a ogni
+/// casella nuova; gli esiti (success/error/warning/medium) li emette
+/// GameViewModel via FiloHaptics. Mossa non valida: nessun movimento, nessun
+/// haptic (resta l'annuncio VoiceOver e un breve bordo error).
 struct BoardView: View {
     @EnvironmentObject private var vm: GameViewModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -13,28 +251,33 @@ struct BoardView: View {
     @State private var downSuUltima = false
     @State private var caselleAlDown = 0
     @State private var casellaDown: Int?
-
-    private let gap: CGFloat = 6
+    @State private var popIdx: Int?
+    @State private var popScale: CGFloat = 1
+    @State private var endScale: CGFloat = 1
 
     var body: some View {
         GeometryReader { geo in
-            let side = (geo.size.width - gap * 4) / 5
+            let side = BoardMetrics.side(forWidth: geo.size.width)
             ZStack(alignment: .topLeading) {
                 ForEach(0..<25, id: \.self) { idx in
+                    let o = BoardMetrics.origin(idx, side: side)
                     CellView(idx: idx, side: side)
                         .frame(width: side, height: side)
-                        .offset(x: CGFloat(idx % 5) * (side + gap),
-                                y: CGFloat(idx / 5) * (side + gap))
+                        .scaleEffect(popIdx == idx ? popScale : 1)
+                        .offset(x: o.x, y: o.y)
                 }
-                overlayFili(side: side)
-                // numeri e badge SOPRA il filo (layer inerte: tocchi e
+                BoardThreadLayer(side: side,
+                                 filo: vm.engine.filo,
+                                 trim: trimFilo,
+                                 sarto: vm.revealSarto ? vm.puzzle.percorsoSarto : [],
+                                 sartoTrim: sartoTrim,
+                                 endScale: endScale,
+                                 esitoPercorso: vm.esitoVisuale?.percorso,
+                                 esito: vm.esitoVisuale?.esito)
+                // numeri SOPRA il filo (layer inerte: tocchi e
                 // accessibilità restano sulle CellView sotto)
-                ForEach(0..<25, id: \.self) { idx in
-                    CellNumeroView(idx: idx, side: side)
-                        .frame(width: side, height: side)
-                        .offset(x: CGFloat(idx % 5) * (side + gap),
-                                y: CGFloat(idx / 5) * (side + gap))
-                }
+                BoardNumberLayer(side: side, valori: vm.puzzle.valori, filo: vm.engine.filo,
+                                 popIdx: popIdx, popScale: popScale)
             }
             // Le caselle sono posizionate con .offset (spostamento SOLO visivo):
             // senza un frame esplicito la ZStack resterebbe grande una casella e
@@ -46,24 +289,56 @@ struct BoardView: View {
             .gesture(dragGesture(side: side))
         }
         .aspectRatio(1, contentMode: .fit)
-        .sensoryFeedback(.error, trigger: vm.shakeTick)
+        .frame(maxWidth: BoardMetrics.maxWidth)
         .onChange(of: vm.engine.filo.count) { vecchio, nuovo in
-            // il segmento nuovo "viene cucito" (trim dell'ultimo tratto, UX §7.2)
-            guard nuovo > vecchio, nuovo >= 2, !reduceMotion else {
-                trimFilo = 1
-                return
-            }
-            trimFilo = CGFloat(nuovo - 2) / CGFloat(nuovo - 1)
-            withAnimation(.easeOut(duration: 0.12)) { trimFilo = 1 }
+            casellaAggiunta(vecchio: vecchio, nuovo: nuovo)
+        }
+        .onChange(of: vm.engine.stato) { _, stato in
+            if stato == .vinta { assesta() }
         }
         .onChange(of: vm.revealSarto) { _, attivo in
             aggiornaSarto(attivo: attivo, animato: true)
         }
         .onAppear {
             aggiornaSarto(attivo: vm.revealSarto, animato: false)
+            FiloHaptics.prepare()
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Griglia di gioco, 5 righe per 5 colonne")
+    }
+
+    /// Nuova casella: segmento cucito in 0,12 s, selezione (throttled),
+    /// prima casella con scale 0,97 → 1.
+    private func casellaAggiunta(vecchio: Int, nuovo: Int) {
+        guard nuovo > vecchio else {
+            trimFilo = 1
+            return
+        }
+        if vm.engine.stato == .inCorso { FiloHaptics.selection() }
+        if nuovo == 1, let primo = vm.engine.filo.first, !reduceMotion {
+            popIdx = primo
+            popScale = 0.97
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 16_000_000)
+                withAnimation(FiloMotion.tile) { popScale = 1 }
+            }
+        }
+        guard nuovo >= 2, !reduceMotion else {
+            trimFilo = 1
+            return
+        }
+        trimFilo = CGFloat(nuovo - 2) / CGFloat(nuovo - 1)
+        withAnimation(FiloMotion.segment) { trimFilo = 1 }
+    }
+
+    /// Somma esatta: il nodo finale si assesta 1 → 1,08 → 1.
+    private func assesta() {
+        guard !reduceMotion else { return }
+        withAnimation(FiloMotion.settle) { endScale = 1.08 }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 140_000_000)
+            withAnimation(FiloMotion.settle) { endScale = 1 }
+        }
     }
 
     private func aggiornaSarto(attivo: Bool, animato: Bool) {
@@ -79,70 +354,10 @@ struct BoardView: View {
         }
     }
 
-    // MARK: Overlay del filo
-
-    private func centro(_ idx: Int, side: CGFloat) -> CGPoint {
-        CGPoint(x: CGFloat(idx % 5) * (side + gap) + side / 2,
-                y: CGFloat(idx / 5) * (side + gap) + side / 2)
-    }
-
-    @ViewBuilder
-    private func overlayFili(side: CGFloat) -> some View {
-        ZStack(alignment: .topLeading) {
-            // reveal del percorso del Sarto (filo d'oro chiaro che "si cuce")
-            if vm.revealSarto {
-                PolylineShape(points: vm.puzzle.percorsoSarto.map { centro($0, side: side) })
-                    .trim(from: 0, to: sartoTrim)
-                    .stroke(Theme.sarto,
-                            style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
-            }
-            // filo dell'esito appena concluso, in dissolvenza colorata
-            if let ev = vm.esitoVisuale {
-                EsitoFiloOverlay(punti: ev.percorso.map { centro($0, side: side) },
-                                 esito: ev.esito)
-            }
-            // filo corrente
-            if let primo = vm.engine.filo.first {
-                // marcatore di PARTENZA: anello chiaro attorno al punto d'inizio,
-                // così è evidente che il filo parte dalla casella toccata (qualsiasi).
-                Circle()
-                    .stroke(Theme.sarto, lineWidth: 2)
-                    .frame(width: 18, height: 18)
-                    .position(centro(primo, side: side))
-                Circle()
-                    .fill(Theme.filoGradient)
-                    .frame(width: 11, height: 11)
-                    .position(centro(primo, side: side))
-                if vm.engine.filo.count >= 2 {
-                    if Theme.usaArte {
-                        CordaOro(punti: vm.engine.filo.map { centro($0, side: side) },
-                                 trim: trimFilo)
-                    } else {
-                        PolylineShape(points: vm.engine.filo.map { centro($0, side: side) })
-                            .trim(from: 0, to: trimFilo)
-                            .stroke(Theme.filoGradient,
-                                    style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
-                            .shadow(color: Theme.filo.opacity(0.6), radius: 4, y: 0)
-                    }
-                }
-            }
-        }
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
-
     // MARK: Input tap + drag
 
     private func cella(at p: CGPoint, side: CGFloat) -> Int? {
-        let step = side + gap
-        let c = Int(floor(p.x / step)), r = Int(floor(p.y / step))
-        guard (0..<5).contains(c), (0..<5).contains(r) else { return nil }
-        // area utile ridotta del 12%: meno falsi positivi negli angoli (come il web)
-        let x0 = CGFloat(c) * step, y0 = CGFloat(r) * step
-        let m = side * 0.12
-        guard p.x >= x0 + m, p.x <= x0 + side - m,
-              p.y >= y0 + m, p.y <= y0 + side - m else { return nil }
-        return r * 5 + c
+        BoardMetrics.cell(at: p, side: side)
     }
 
     private func dragGesture(side: CGFloat) -> some Gesture {
@@ -178,141 +393,33 @@ struct BoardView: View {
     }
 }
 
-/// Filo appena perso: resta visibile nel colore dell'esito e si dissolve.
-private struct EsitoFiloOverlay: View {
-    let punti: [CGPoint]
-    let esito: EsitoFilo
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var opacita = 1.0
-    @State private var caduta = 0.0
-
-    private var colore: Color {
-        switch esito {
-        case .spezzato: return Theme.spezzato
-        case .annodato: return Theme.annodato
-        default: return Theme.filo
-        }
-    }
-
-    var body: some View {
-        ZStack {
-            if let primo = punti.first {
-                Circle().fill(colore).frame(width: 10, height: 10).position(primo)
-            }
-            PolylineShape(points: punti)
-                .stroke(colore,
-                        style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round,
-                                           dash: esito == .spezzato && !reduceMotion ? [4, 8] : []))
-        }
-        .opacity(opacita)
-        .offset(y: caduta)
-        .onAppear {
-            let durata = reduceMotion ? 0.2 : 0.4
-            let ritardo = reduceMotion ? 0.0 : 0.15
-            withAnimation(.easeIn(duration: durata).delay(ritardo)) {
-                opacita = 0
-                if esito != .spezzato && !reduceMotion { caduta = 4 }
-            }
-        }
-    }
-}
-
-/// Singola casella (layer di FONDO): stati default / in-filo / ultima /
-/// sarto / shake (UX §5.1), tocchi e accessibilità. Il numero e il badge
-/// d'ordine stanno in `CellNumeroView`, sopra il filo.
+/// Singola casella (layer di FONDO): tessera piatta riposo / sul filo,
+/// breve bordo error sulla mossa non valida, tocchi e accessibilità. Il
+/// numero sta in `BoardNumberLayer`, sopra il filo.
 struct CellView: View {
     @EnvironmentObject private var vm: GameViewModel
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let idx: Int
     let side: CGFloat
-    @State private var pulse = false
 
     var body: some View {
-        let pos = vm.engine.filo.firstIndex(of: idx)
-        let inFilo = pos != nil
-        let ultima = inFilo && pos == vm.engine.filo.count - 1 && !vm.engine.gameOver
-        let sulSarto = vm.revealSarto && vm.puzzle.percorsoSarto.contains(idx)
-        let flashNonValida = reduceMotion && vm.casellaNonValida == idx
-        let arte = Theme.usaArte
-        let raggio: CGFloat = arte ? Arte.raggio(side) : 12
+        let inFilo = vm.engine.filo.contains(idx)
+        let nonValida = vm.casellaNonValida == idx
 
         ZStack {
-            if arte {
-                // kit grafico: tessera velluto / oro (corpo = cella)
-                TesseraArte(accesa: inFilo, lato: side, accesaParziale: sulSarto)
-                if flashNonValida {
-                    RoundedRectangle(cornerRadius: raggio)
-                        .strokeBorder(Theme.spezzato, lineWidth: 2)
-                }
-            } else {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(inFilo ? AnyShapeStyle(Theme.cellaAccesa) : AnyShapeStyle(Theme.surface2))
-                RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(flashNonValida ? Theme.spezzato
-                                  : (inFilo ? Theme.filoScuro : Theme.border), lineWidth: 1)
-            }
-            if sulSarto {
-                RoundedRectangle(cornerRadius: max(2, raggio - 3))
-                    .strokeBorder(Theme.sarto,
-                                  style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
-                    .padding(2)
-            }
-            // numero e badge d'ordine: nel layer CellNumeroView, sopra il filo
-        }
-        .overlay {
-            if ultima {
-                RoundedRectangle(cornerRadius: raggio + 2)
-                    .strokeBorder(Theme.filo.opacity(reduceMotion ? 0.5 : (pulse ? 0.2 : 0.6)),
-                                  lineWidth: 3)
-                    .padding(-3)
-                    .onAppear {
-                        guard !reduceMotion else { return }
-                        pulse = false
-                        withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
-                            pulse = true
-                        }
-                    }
+            TesseraArte(accesa: inFilo, lato: side)
+            if nonValida {
+                RoundedRectangle(cornerRadius: Arte.raggio(side), style: .continuous)
+                    .strokeBorder(Theme.spezzato, lineWidth: 1.5)
+                    .transition(.opacity)
             }
         }
-        .modifier(ShakeEffect(travel: reduceMotion ? 0 : 4,
-                              shakes: CGFloat(vm.shakes[idx] ?? 0)))
-        .animation(reduceMotion ? nil : .linear(duration: 0.24), value: vm.shakes[idx])
         .animation(.easeInOut(duration: 0.16), value: inFilo)
+        .animation(.easeOut(duration: 0.12), value: nonValida)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(vm.etichettaCasella(idx))
         .accessibilityAddTraits(.isButton)
         .accessibilityAction {
             vm.gioca(idx, viaTap: true)
         }
-    }
-}
-
-/// Layer NUMERI della casella (sopra il filo): numero con alone di contrasto
-/// e badge d'ordine; stessa geometria e stesso shake della CellView sotto.
-/// Inerte e nascosto all'accessibilità (le etichette restano sulle celle).
-private struct CellNumeroView: View {
-    @EnvironmentObject private var vm: GameViewModel
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    let idx: Int
-    let side: CGFloat
-
-    var body: some View {
-        let pos = vm.engine.filo.firstIndex(of: idx)
-        NumeroCella(valore: vm.puzzle.valori[idx], accesa: pos != nil,
-                    font: .system(size: max(17, side * 0.4), weight: .semibold, design: .monospaced))
-            .frame(width: side, height: side)
-            .overlay(alignment: .topTrailing) {
-                if let p = pos {
-                    // contatore d'ordine come chip circolare: chiaramente
-                    // "passo n", non un vincolo di partenza.
-                    BadgeOrdine(passo: p + 1)
-                }
-            }
-            .modifier(ShakeEffect(travel: reduceMotion ? 0 : 4,
-                                  shakes: CGFloat(vm.shakes[idx] ?? 0)))
-            .animation(reduceMotion ? nil : .linear(duration: 0.24), value: vm.shakes[idx])
-            .animation(.easeInOut(duration: 0.16), value: pos != nil)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
     }
 }

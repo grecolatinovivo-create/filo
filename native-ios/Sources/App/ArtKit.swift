@@ -1,115 +1,97 @@
 import SwiftUI
 
-/// KIT GRAFICO "velluto blu-notte + filo d'oro" (tema `notte`, `Theme.usaArte`).
+/// KIT GRAFICO 2.0 — resa interamente vettoriale (REDESIGN_SPEC §1, §4, §5).
 ///
-/// Gli asset raster stanno in Resources/Assets.xcassets e sono prodotti da
-/// `native-ios/tools/prepare_art.py` (script riproducibile): BgVelluto,
-/// TileIdle/TileLit, LogoFilo, CardDaily/CardSalita, IconStar/IconMedal/IconHeart.
-/// Tutte le immagini qui sono DECORATIVE (`Image(decorative:)`): non entrano
-/// nell'albero di accessibilità, così le etichette esistenti (usate anche dai
-/// UI test) restano identiche.
+/// I nomi storici (`Arte`, `SfondoTema`, `TesseraArte`, `CordaOro`,
+/// `PannelloVelluto`, `IconaArte`, `NumeroCella`, `BadgeOrdine`) restano per
+/// compatibilità con i call-site, ma disegnano il nuovo look: tessere piatte,
+/// filo d'oro sottile, card "FiloCard", icone SF Symbols. Gli asset raster
+/// (BgVelluto, TileIdle/TileLit, Card*, Icon*) restano nel catalogo ma non
+/// sono più usati qui. Tutto è DECORATIVO (accessibilityHidden): le etichette
+/// d'accessibilità restano sulle celle/contenitori dei chiamanti.
 enum Arte {
-    /// Corpo della tessera / lato della tela PNG (prepare_art.py: margine 8%
-    /// per lato → 1 − 2·0,08). Disegnando la tela a `lato / corpoSuTela` il
-    /// CORPO coincide con la cella; bagliore e ombra escono nel gap.
-    static let corpoSuTela: CGFloat = 0.84
-    /// Raggio d'angolo del corpo della tessera, in frazione del lato (misurato
-    /// sugli asset: ~23 px su 202).
-    static let raggioRelativo: CGFloat = 0.12
+    /// Storico (tela PNG più grande della cella). Ora la tessera coincide con
+    /// la cella: 1.
+    static let corpoSuTela: CGFloat = 1
+    /// Raggio d'angolo della tessera in frazione del lato (spec: lato × 0,18).
+    static let raggioRelativo: CGFloat = 0.18
 
-    static func raggio(_ lato: CGFloat) -> CGFloat { lato * raggioRelativo }
+    /// Raggio della tessera: lato × 0,18, limitato a 8…12 pt (spec §3).
+    static func raggio(_ lato: CGFloat) -> CGFloat { FiloMetrics.tileRadius(lato) }
 
-    // Oro della "corda" e dei pulsanti.
-    static let oroChiaro = Color(hexRGB: 0xFFD766)
-    static let oro = Color(hexRGB: 0xF5B531)
-    static let oroScuro = Color(hexRGB: 0xC88A12)
-    static let oroAnima = Color(hexRGB: 0xFFF6DA)      // core chiaro della corda
-    static let oroOmbra = Color(hexRGB: 0x4A3004)      // contorno sottile della corda
-    static let velluto = Color(hexRGB: 0x0B1230)       // pannelli semi-trasparenti
+    // Oro (spec §1): un solo oro pieno + un riflesso controllato.
+    static let oroChiaro = Color(hexRGB: 0xF3D79E)     // goldHighlight
+    static let oro = Color(hexRGB: 0xE8C27C)           // gold
+    static let oroScuro = Color(hexRGB: 0x8A6E3E)      // oro attenuato
+    static let oroAnima = Color(hexRGB: 0xF3D79E)      // riflesso interno del filo
+    static let oroOmbra = Color.black                  // ombra del filo (al 15 %)
+    /// Storico "velluto": ora è il colore surface.
+    static let velluto = Color(hexRGB: 0x121C30)
 
-    /// Testo su tessera spenta (velluto) e accesa (oro): contrasto AA.
-    static let testoSuVelluto = Color(hexRGB: 0xF2F5FB)
-    static let testoSuOro = Color(hexRGB: 0x1A1408)
+    /// Testo su tessera / superficie e su oro (contrasto AA).
+    static let testoSuVelluto = Color(hexRGB: 0xF5F3ED)
+    static let testoSuOro = Color(hexRGB: 0x182235)
 
+    /// Oro pieno (niente gradiente "slot machine").
     static var oroGradient: LinearGradient {
-        LinearGradient(colors: [oroChiaro, oro, oroScuro],
-                       startPoint: .topLeading, endPoint: .bottomTrailing)
+        LinearGradient(colors: [oro, oro], startPoint: .top, endPoint: .bottom)
     }
 }
 
-/// Sfondo di schermata: velluto (kit grafico) o gradiente del tema.
-/// L'immagine è in overlay di un colore pieno: `scaledToFill` non può
-/// allargare il layout della schermata, e il ritaglio resta nei bordi.
+/// Sfondo di schermata: gradiente verticale pulito + luce radiale morbida
+/// (vedi `FiloBackground`). Niente bitmap velluto, niente particelle.
 struct SfondoTema: View {
     var body: some View {
-        if Theme.usaArte {
-            Theme.bg
-                .overlay {
-                    Image(decorative: "BgVelluto")
-                        .resizable()
-                        .scaledToFill()
-                }
-                .clipped()
-                .ignoresSafeArea()
-                .accessibilityHidden(true)
-        } else {
-            Theme.bgGradient.ignoresSafeArea()
-        }
+        FiloBackground()
     }
 }
 
-/// Tessera del kit: occupa il frame proposto (lato × lato) e disegna la tela
-/// PNG più grande, centrata, così il CORPO combacia con la cella. Idle e lit
-/// sono sovrapposte con corpi identici: l'accensione è un cross-fade
-/// d'opacità (animabile dal chiamante). `accesaParziale` = anteprima del
-/// percorso del Sarto (lit attenuata sopra idle).
+/// Tessera piatta (spec §5). Riposo: fill `cell`, bordo 1 pt stroke.
+/// Sul filo (`accesa`): fill `cellSelected`, bordo oro 1,5 pt. Raggio
+/// lato × 0,18 (8…12). Nessuna ombra né bagliore. `accesaParziale`
+/// (anteprima del Sarto, solo se non accesa): bordo sarto attenuato.
+/// Occupa esattamente `lato × lato`; il chiamante anima `accesa`.
 struct TesseraArte: View {
     let accesa: Bool
     let lato: CGFloat
     var accesaParziale: Bool = false
 
     var body: some View {
-        let tela = lato / Arte.corpoSuTela
-        Color.clear
-            .overlay {
-                ZStack {
-                    Image(decorative: "TileIdle")
-                        .resizable()
-                        .interpolation(.high)
-                    Image(decorative: "TileLit")
-                        .resizable()
-                        .interpolation(.high)
-                        .opacity(accesa ? 1 : (accesaParziale ? 0.3 : 0))
-                }
-                .frame(width: tela, height: tela)
-            }
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
+        let shape = RoundedRectangle(cornerRadius: Arte.raggio(lato), style: .continuous)
+        ZStack {
+            shape.fill(accesa ? Theme.cellSelected : Theme.cell)
+            shape.strokeBorder(bordo, lineWidth: accesa ? 1.5 : 1)
+        }
+        .frame(width: lato, height: lato)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private var bordo: Color {
+        if accesa { return Theme.filo }
+        if accesaParziale { return Theme.sarto.opacity(0.55) }
+        return Theme.border
     }
 }
 
-/// Il filo come "corda d'oro" (solo codice): alone dorato morbido, contorno
-/// scuro sottile che la stacca dalle tessere oro, tratto in gradiente oro a
-/// tre toni, riflesso e anima chiara al centro. Cap/join arrotondati.
+/// Il filo (spec §5): tratto principale oro 4,5 pt, riflesso interno 1 pt
+/// goldHighlight @ 0,55, cap/join arrotondati, ombra nera 15 % r2 y1.
+/// `trim` anima il segmento nuovo (0,12 s easeOut, lo gestisce il chiamante).
+/// `colore` permette di tingere il filo di un esito (default oro).
 struct CordaOro: View {
     var punti: [CGPoint]
     var trim: CGFloat = 1
-    var spessore: CGFloat = 7.5
+    var spessore: CGFloat = 4.5
+    var colore: Color = Arte.oro
 
     var body: some View {
         let forma = PolylineShape(points: punti).trim(from: 0, to: trim)
         ZStack {
             forma
-                .stroke(Arte.oroOmbra.opacity(0.55),
-                        style: stile(spessore + 2.5))
+                .stroke(colore, style: stile(spessore))
+                .shadow(color: Arte.oroOmbra.opacity(0.15), radius: 2, y: 1)
             forma
-                .stroke(Arte.oroGradient, style: stile(spessore))
-                .shadow(color: Arte.oro.opacity(0.7), radius: spessore * 0.9)
-                .shadow(color: Arte.oroChiaro.opacity(0.45), radius: 2)
-            forma
-                .stroke(Arte.oroChiaro.opacity(0.75), style: stile(spessore * 0.45))
-            forma
-                .stroke(Arte.oroAnima.opacity(0.9), style: stile(max(1, spessore * 0.16)))
+                .stroke(Arte.oroAnima.opacity(0.55), style: stile(max(1, spessore * 0.22)))
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
@@ -120,28 +102,23 @@ struct CordaOro: View {
     }
 }
 
-/// Pannello "velluto" semi-trasparente con bordo oro sottile (card del menu,
-/// riquadri). `bordoOpacita` 0 = nessun bordo oro.
+/// Storico pannello "velluto": ora disegna lo sfondo di una FiloCard
+/// (surface, bordo 1 pt stroke @ 0,6, nessun bagliore). `bordoOpacita` 0 =
+/// senza bordo; `bordoSpessore` è ignorato (sempre 1 pt). Per contenuti nuovi
+/// usare `FiloCard` / `.filoCard()`.
 struct PannelloVelluto: View {
-    var raggio: CGFloat = 22
+    var raggio: CGFloat = FiloMetrics.cardRadius
     var bordoOpacita: Double = 0.9
-    var bordoSpessore: CGFloat = 1.2
+    var bordoSpessore: CGFloat = 1
 
     var body: some View {
-        RoundedRectangle(cornerRadius: raggio)
-            .fill(LinearGradient(colors: [Color(hexRGB: 0x18234F).opacity(0.72),
-                                          Arte.velluto.opacity(0.82)],
-                                 startPoint: .top, endPoint: .bottom))
-            .overlay(
-                RoundedRectangle(cornerRadius: raggio)
-                    .strokeBorder(Arte.oroGradient, lineWidth: bordoSpessore)
-                    .opacity(bordoOpacita)
-            )
+        FiloCardBackground(radius: raggio, bordered: bordoOpacita > 0)
     }
 }
 
-/// Icona del kit (stella, medaglia, cuore), decorativa. `spenta`: grigia e
-/// attenuata (stella non guadagnata, vita persa).
+/// Icona decorativa (spec §4): stella `star.fill`/`star`, medaglia
+/// `medal.fill`, "cuore" = nodo d'oro (vite della Salita). `spenta`: stella
+/// a contorno textTertiary / nodo vuoto.
 struct IconaArte: View {
     enum Tipo: String { case stella = "IconStar", medaglia = "IconMedal", cuore = "IconHeart" }
     let tipo: Tipo
@@ -149,57 +126,65 @@ struct IconaArte: View {
     var lato: CGFloat = 28
 
     var body: some View {
-        Image(decorative: tipo.rawValue)
-            .resizable()
-            .interpolation(.high)
-            .scaledToFit()
-            .frame(width: lato, height: lato)
-            .grayscale(spenta ? 1 : 0)
-            .opacity(spenta ? 0.3 : 1)
-            .accessibilityHidden(true)
+        Group {
+            switch tipo {
+            case .stella:
+                StarIcon(earned: !spenta, size: lato)
+            case .medaglia:
+                MedalIcon(size: lato)
+                    .opacity(spenta ? 0.35 : 1)
+            case .cuore:
+                KnotDot(filled: !spenta, size: max(8, lato * 0.7))
+                    .frame(width: lato, height: lato)
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
 
-/// Numero di una casella, disegnato in un LAYER SOPRA il filo (le board
-/// impilano: tessere → filo → numeri). Alone di contrasto sottile: chiaro su
-/// tessera accesa, scuro su tessera spenta, così il numero resta leggibile
-/// anche dove passa la corda. Decorativo: le etichette d'accessibilità
-/// restano sulle celle del layer di fondo.
+/// Numero di una casella (layer SOPRA il filo). SF Rounded medium
+/// (lato × 0,42, 20…30 pt) su una piccola maschera circolare (≈ 0,56 × lato)
+/// del colore della tessera, così il filo non attraversa mai una cifra.
+/// Riempie il frame proposto (il chiamante lo dimensiona `lato × lato`).
+/// `font` è mantenuto per compatibilità ma ignorato (la misura deriva dal
+/// lato). `maschera: false` = nessun cerchio.
 struct NumeroCella: View {
     let valore: Int
     let accesa: Bool
-    var font: Font = .system(.body, design: .monospaced).weight(.semibold)
-    /// Colore su tessera spenta nella resa vettoriale (default Theme.text).
+    var font: Font? = nil
+    /// Colore del numero su tessera a riposo (default textPrimary).
     var coloreSpento: Color? = nil
+    var maschera: Bool = true
 
     var body: some View {
-        let arte = Theme.usaArte
-        Text("\(valore)")
-            .font(font)
-            .monospacedDigit()
-            .foregroundStyle(accesa ? (arte ? Arte.testoSuOro : Theme.bg)
-                                    : (arte ? Arte.testoSuVelluto : (coloreSpento ?? Theme.text)))
-            .minimumScaleFactor(0.6)
-            .shadow(color: accesa ? Color.white.opacity(0.65) : Color.black.opacity(0.75), radius: 1)
-            .shadow(color: accesa ? Arte.oroChiaro.opacity(0.6) : Color.black.opacity(0.4), radius: 3)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
+        GeometryReader { geo in
+            let lato = min(geo.size.width, geo.size.height)
+            ZStack {
+                if maschera {
+                    Circle()
+                        .fill(accesa ? Theme.cellSelected : Theme.cell)
+                        .frame(width: lato * 0.56, height: lato * 0.56)
+                }
+                Text(verbatim: "\(valore)")
+                    .font(FiloFont.tile(side: lato))
+                    .monospacedDigit()
+                    .foregroundStyle(accesa ? Theme.text : (coloreSpento ?? Theme.text))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 
-/// Chip circolare del contatore d'ordine ("passo n"), sopra il filo.
+/// Storico chip "passo n": la spec 2.0 rimuove i badge d'ordine dalle
+/// tessere. Non disegna nulla.
 struct BadgeOrdine: View {
     let passo: Int
 
     var body: some View {
-        Text("\(passo)")
-            .font(.system(size: 10, weight: .bold, design: .monospaced))
-            .foregroundStyle(Theme.filo)
-            .frame(width: 16, height: 16)
-            .background(Theme.bg.opacity(0.85), in: Circle())
-            .overlay(Circle().strokeBorder(Theme.filo.opacity(0.5), lineWidth: 1))
-            .padding(3)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
+        EmptyView()
     }
 }

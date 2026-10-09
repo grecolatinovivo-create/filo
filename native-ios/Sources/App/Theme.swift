@@ -1,42 +1,51 @@
 import SwiftUI
 
-/// Un tema è una palette di colori. Restano gli stessi token del design system
-/// originale (UX_SPEC §2), ma ora sono selezionabili: il tema di default è
-/// gratuito, gli altri sono un "extra" sbloccabile con l'acquisto in-app.
+/// Un tema è una palette di colori. I nomi delle proprietà restano quelli del
+/// design system originale (call-site invariati); i valori del tema `notte`
+/// seguono REDESIGN_SPEC §1 ("quiet luxury": blu notte + oro misurato).
+/// Alias spec → proprietà: background=bg, bg2, surface, surfaceRaised=surface2,
+/// stroke=border, gold=filo, goldHighlight=filoHover, textPrimary=text,
+/// textSecondary=textMuted, error=spezzato, success=ok.
 struct Palette: Equatable {
     let bg: Color
-    let bg2: Color          // secondo stop del gradiente di sfondo
+    let bg2: Color          // secondo stop del gradiente di sfondo (in alto)
     let surface: Color
-    let surface2: Color
-    let border: Color
+    let surface2: Color     // surfaceRaised: overlay, bottoni secondari, pannelli
+    let border: Color       // stroke: separatori, bordi 1 pt
     let text: Color
-    let textMuted: Color
-    let filo: Color
-    let filoHover: Color
-    let filoScuro: Color     // SOLO bordi decorativi
+    let textMuted: Color    // textSecondary
+    let filo: Color         // gold: filo, primario, ricompense, numero obiettivo
+    let filoHover: Color    // goldHighlight
+    let filoScuro: Color    // oro attenuato (punti, disabilitato)
     let sarto: Color
     let ok: Color
     let spezzato: Color
     let annodato: Color
     let overlay: Color
-    /// True se il tema usa il KIT GRAFICO raster (velluto + filo d'oro, asset
-    /// catalog: BgVelluto, TileIdle/TileLit, LogoFilo, Card*, Icon*). Solo
-    /// `notte`; gli altri temi restano con la resa vettoriale (fallback).
+    /// Storico: true = ramo "kit grafico" nelle schermate. Resta true per
+    /// `notte` così i rami esistenti usano i componenti ridisegnati
+    /// (TesseraArte, CordaOro, PannelloVelluto, IconaArte…).
     var usaArte: Bool = false
+    /// Metadati, testo terziario.
+    var textTertiary: Color = Color(hexRGB: 0x9AA9BA)
+    /// Tessera a riposo.
+    var cell: Color = Color(hexRGB: 0x1D2B42)
+    /// Tessera sul filo.
+    var cellSelected: Color = Color(hexRGB: 0x2F4056)
+    /// Testo su oro (mai bianco).
+    var onGold: Color = Color(hexRGB: 0x182235)
 
-    /// Gradiente di sfondo (angolare morbido) — cuore del look "colorato".
+    /// Gradiente verticale pulito dello sfondo: bg2 (in alto) → bg (in basso).
     var bgGradient: LinearGradient {
-        LinearGradient(colors: [bg, bg2], startPoint: .top, endPoint: .bottom)
+        LinearGradient(colors: [bg2, bg], startPoint: .top, endPoint: .bottom)
     }
-    /// Gradiente del filo del giocatore (caldo, con brillantezza). Col kit
-    /// grafico è l'oro a tre toni della "corda d'oro" (Arte.oro*).
+    /// "Gradiente" del filo: oro pieno (niente effetto slot machine).
     var filoGradient: LinearGradient {
-        if usaArte { return Arte.oroGradient }
-        return LinearGradient(colors: [filoHover, filo], startPoint: .topLeading, endPoint: .bottomTrailing)
+        LinearGradient(colors: [filo, filo], startPoint: .top, endPoint: .bottom)
     }
-    /// Riempimento di una casella accesa.
+    /// Riempimento di una casella accesa (piatto, cellSelected).
     var cellaAccesa: LinearGradient {
-        LinearGradient(colors: [filoHover, filo], startPoint: .top, endPoint: .bottom)
+        LinearGradient(colors: [cellSelected, cellSelected], startPoint: .top, endPoint: .bottom)
     }
 }
 
@@ -62,17 +71,20 @@ enum ThemeID: String, CaseIterable, Identifiable, Codable {
     var palette: Palette {
         switch self {
         case .notte:
-            // Default gratuito: dark ricco blu-notte con filo oro caldo.
+            // Unico look dalla 2.0 (REDESIGN_SPEC §1): blu notte + oro caldo.
             return Palette(
-                bg: Color(hexRGB: 0x11151F), bg2: Color(hexRGB: 0x1A1030),
-                surface: Color(hexRGB: 0x1B2233), surface2: Color(hexRGB: 0x263149),
-                border: Color(hexRGB: 0x33405C), text: Color(hexRGB: 0xF2F5FB),
-                textMuted: Color(hexRGB: 0x9FB0CC), filo: Color(hexRGB: 0xF5B531),
-                filoHover: Color(hexRGB: 0xFFD15C), filoScuro: Color(hexRGB: 0x8A6A1F),
-                sarto: Color(hexRGB: 0xF7E7B4), ok: Color(hexRGB: 0x38D39F),
-                spezzato: Color(hexRGB: 0xFF6B6B), annodato: Color(hexRGB: 0x6EA8FE),
-                overlay: Color(hexRGB: 0x05070D).opacity(0.74),
-                usaArte: true)
+                bg: Color(hexRGB: 0x090F1E), bg2: Color(hexRGB: 0x0E1628),
+                surface: Color(hexRGB: 0x121C30), surface2: Color(hexRGB: 0x19253B),
+                border: Color(hexRGB: 0x35445C), text: Color(hexRGB: 0xF5F3ED),
+                textMuted: Color(hexRGB: 0xBEC9D7), filo: Color(hexRGB: 0xE8C27C),
+                filoHover: Color(hexRGB: 0xF3D79E), filoScuro: Color(hexRGB: 0x8A6E3E),
+                sarto: Color(hexRGB: 0xD9C9A3), ok: Color(hexRGB: 0x82DBB2),
+                spezzato: Color(hexRGB: 0xFF959C), annodato: Color(hexRGB: 0x9DB8FF),
+                overlay: Color(hexRGB: 0x050914).opacity(0.72),
+                usaArte: true,
+                textTertiary: Color(hexRGB: 0x9AA9BA),
+                cell: Color(hexRGB: 0x1D2B42), cellSelected: Color(hexRGB: 0x2F4056),
+                onGold: Color(hexRGB: 0x182235))
         case .aurora:
             // Viola-teal con filo verde-acqua brillante.
             return Palette(
@@ -171,8 +183,22 @@ enum Theme {
     static var spezzato: Color  { current.spezzato }
     static var annodato: Color  { current.annodato }
     static var overlay: Color   { current.overlay }
-    /// Kit grafico raster attivo (solo tema `notte`).
+    /// Ramo "kit" attivo nelle schermate (sempre true: tema `notte`).
     static var usaArte: Bool    { current.usaArte }
+
+    // Token della spec 2.0 (REDESIGN_SPEC §1), con alias leggibili.
+    static var textTertiary: Color  { current.textTertiary }
+    static var cell: Color          { current.cell }
+    static var cellSelected: Color  { current.cellSelected }
+    static var onGold: Color        { current.onGold }
+    static var surfaceRaised: Color { current.surface2 }
+    static var stroke: Color        { current.border }
+    static var gold: Color          { current.filo }
+    static var goldHighlight: Color { current.filoHover }
+    static var textPrimary: Color   { current.text }
+    static var textSecondary: Color { current.textMuted }
+    static var error: Color         { current.spezzato }
+    static var success: Color       { current.ok }
 
     static var bgGradient: LinearGradient { current.bgGradient }
     static var filoGradient: LinearGradient { current.filoGradient }
@@ -187,77 +213,30 @@ extension Color {
     }
 }
 
-/// Caption uppercase in stile HUD (UX_SPEC §3).
+/// EYEBROW (REDESIGN_SPEC §2): SF Pro 11 semibold, MAIUSCOLO, tracking +1.2,
+/// colore textTertiary. `.captionStyle()` è il nome storico; `.eyebrowStyle()`
+/// è l'alias nuovo. Scala con Dynamic Type (relativo a .caption2).
 struct CaptionStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .font(.footnote.weight(.medium))
+            .filoFont(.eyebrow)
             .textCase(.uppercase)
-            .kerning(1.0)
-            .foregroundStyle(Theme.textMuted)
-    }
-}
-
-/// Bottone primario pill (ora con gradiente del tema, UX_SPEC §5.2).
-struct PrimaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.body.weight(.bold))
-            .foregroundStyle(Theme.usaArte ? Arte.testoSuOro : Theme.bg)
-            .padding(.vertical, 14)
-            .padding(.horizontal, 28)
-            .frame(minHeight: 48)
-            .background(Theme.filoGradient)
-            .overlay {
-                // riflesso morbido in alto: "oro 3D" del kit grafico
-                if Theme.usaArte {
-                    LinearGradient(colors: [.white.opacity(0.35), .white.opacity(0)],
-                                   startPoint: .top, endPoint: .center)
-                }
-            }
-            .clipShape(Capsule())
-            .overlay(Capsule().strokeBorder(Theme.filoHover.opacity(0.5), lineWidth: 1))
-            .shadow(color: Theme.filo.opacity(configuration.isPressed ? 0.15 : 0.35),
-                    radius: configuration.isPressed ? 4 : 12, y: 3)
-            .opacity(configuration.isPressed ? 0.9 : 1)
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-    }
-}
-
-/// Bottone secondario rosso ("Strappa il filo", UX_SPEC §5.3). Col kit
-/// grafico: pannello velluto con bordo oro (il testo resta rosso: azione
-/// distruttiva).
-struct SecondaryButtonStyle: ButtonStyle {
-    var enabled = true
-    private var bordo: AnyShapeStyle {
-        guard enabled else { return AnyShapeStyle(Theme.border) }
-        return Theme.usaArte ? AnyShapeStyle(Arte.oroGradient) : AnyShapeStyle(Theme.spezzato)
-    }
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.body.weight(.bold))
-            .foregroundStyle(enabled ? Theme.spezzato : Theme.textMuted)
-            .padding(.vertical, 14)
-            .padding(.horizontal, 28)
-            .frame(minHeight: 48)
-            .background(
-                Capsule().strokeBorder(bordo, lineWidth: Theme.usaArte ? 1.5 : 2)
-            )
-            .background(
-                Capsule().fill(configuration.isPressed && enabled
-                               ? Theme.spezzato.opacity(0.2)
-                               : (Theme.usaArte ? Arte.velluto.opacity(0.55) : Color.clear))
-            )
-            .opacity(enabled ? 1 : 0.55)
-            .scaleEffect(configuration.isPressed && enabled ? 0.97 : 1)
+            .foregroundStyle(Theme.textTertiary)
     }
 }
 
 extension View {
+    /// Eyebrow (nome storico).
     func captionStyle() -> some View { modifier(CaptionStyle()) }
+    /// Eyebrow: 11 semibold, maiuscolo, tracking 1.2, textTertiary.
+    func eyebrowStyle() -> some View { modifier(CaptionStyle()) }
 }
 
-/// Shake orizzontale ±4pt (mossa non valida, UX_SPEC §6).
+// PrimaryButtonStyle, SecondaryButtonStyle, DestructiveButtonStyle e
+// TertiaryButtonStyle vivono in DesignSystem.swift.
+
+/// Shake orizzontale ±4pt. Non più usato dalle board (spec 2.0: mossa non
+/// valida = nessun movimento); resta per compatibilità.
 struct ShakeEffect: GeometryEffect {
     var travel: CGFloat = 4
     var shakes: CGFloat

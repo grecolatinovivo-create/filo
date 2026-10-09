@@ -62,11 +62,17 @@ final class PracticeSession: ObservableObject {
 }
 
 /// Griglia 5×5 interattiva riutilizzabile, guidata da una `PracticeSession`.
-/// Stessa gestualità tap+drag della `BoardView` del giornaliero, ma disaccoppiata
-/// da `GameViewModel`: ogni esito di mossa viene inoltrato al genitore via `onMove`.
+/// Stessa gestualità tap+drag e stessa resa (REDESIGN_SPEC §5) della
+/// `BoardView` del giornaliero, ma disaccoppiata da `GameViewModel`: ogni
+/// esito di mossa viene inoltrato al genitore via `onMove`.
+/// Haptics: selezione (throttled) a ogni casella nuova; con
+/// `outcomeHaptics` (default true) anche success (somma esatta), error
+/// (spezzato), warning (annodato). Passare `outcomeHaptics: false` se la
+/// schermata emette i propri haptics d'esito (niente doppioni).
 struct PracticeBoardView: View {
     @ObservedObject var session: PracticeSession
     var onMove: (Mossa) -> Void = { _ in }
+    var outcomeHaptics: Bool = true
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -75,45 +81,96 @@ struct PracticeBoardView: View {
     @State private var dragAttivo = false
     @State private var downSuUltima = false
     @State private var caselleAlDown = 0
+    @State private var popIdx: Int?
+    @State private var popScale: CGFloat = 1
+    @State private var endScale: CGFloat = 1
+    @State private var esitoLocale: EsitoLocale?
 
-    private let gap: CGFloat = 6
+    /// Filo appena perso (la sessione lo azzera subito): resa d'uscita.
+    private struct EsitoLocale: Equatable {
+        let id: Int
+        let percorso: [Int]
+        let esito: EsitoFilo
+    }
 
     var body: some View {
         GeometryReader { geo in
-            let side = (geo.size.width - gap * 4) / 5
+            let side = BoardMetrics.side(forWidth: geo.size.width)
             ZStack(alignment: .topLeading) {
                 ForEach(0..<25, id: \.self) { idx in
+                    let o = BoardMetrics.origin(idx, side: side)
                     PracticeCellView(session: session, idx: idx, side: side)
                         .frame(width: side, height: side)
-                        .offset(x: CGFloat(idx % 5) * (side + gap),
-                                y: CGFloat(idx / 5) * (side + gap))
+                        .scaleEffect(popIdx == idx ? popScale : 1)
+                        .offset(x: o.x, y: o.y)
                 }
-                overlay(side: side)
-                // numeri e badge SOPRA il filo (layer inerte)
-                ForEach(0..<25, id: \.self) { idx in
-                    PracticeNumeroView(session: session, idx: idx, side: side)
-                        .frame(width: side, height: side)
-                        .offset(x: CGFloat(idx % 5) * (side + gap),
-                                y: CGFloat(idx / 5) * (side + gap))
-                }
+                BoardThreadLayer(side: side,
+                                 filo: session.engine.filo,
+                                 trim: trimFilo,
+                                 sarto: session.revealSolution ? session.puzzle.percorsoSarto : [],
+                                 sartoTrim: solTrim,
+                                 endScale: endScale,
+                                 esitoPercorso: esitoLocale?.percorso,
+                                 esito: esitoLocale?.esito)
+                    .id(esitoLocale?.id ?? 0)
+                // numeri SOPRA il filo (layer inerte)
+                BoardNumberLayer(side: side, valori: session.puzzle.valori,
+                                 filo: session.engine.filo,
+                                 popIdx: popIdx, popScale: popScale)
             }
             .frame(width: geo.size.width, height: geo.size.width, alignment: .topLeading)
             .contentShape(Rectangle())
             .gesture(dragGesture(side: side))
         }
         .aspectRatio(1, contentMode: .fit)
-        .sensoryFeedback(.error, trigger: session.shakeTick)
+        .frame(maxWidth: BoardMetrics.maxWidth)
         .onChange(of: session.engine.filo.count) { vecchio, nuovo in
-            guard nuovo > vecchio, nuovo >= 2, !reduceMotion else { trimFilo = 1; return }
-            trimFilo = CGFloat(nuovo - 2) / CGFloat(nuovo - 1)
-            withAnimation(.easeOut(duration: 0.12)) { trimFilo = 1 }
+            casellaAggiunta(vecchio: vecchio, nuovo: nuovo)
+        }
+        .onChange(of: session.engine.stato) { _, stato in
+            if stato == .vinta { assesta() }
         }
         .onChange(of: session.revealSolution) { _, attivo in
             aggiornaSoluzione(attivo: attivo, animato: true)
         }
-        .onAppear { aggiornaSoluzione(attivo: session.revealSolution, animato: false) }
+        .onChange(of: ObjectIdentifier(session)) { _, _ in
+            esitoLocale = nil
+            trimFilo = 1
+            endScale = 1
+            popIdx = nil
+            aggiornaSoluzione(attivo: session.revealSolution, animato: false)
+        }
+        .onAppear {
+            aggiornaSoluzione(attivo: session.revealSolution, animato: false)
+            FiloHaptics.prepare()
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Griglia di gioco, 5 righe per 5 colonne")
+    }
+
+    private func casellaAggiunta(vecchio: Int, nuovo: Int) {
+        guard nuovo > vecchio else { trimFilo = 1; return }
+        if session.engine.stato == .inCorso { FiloHaptics.selection() }
+        if nuovo == 1, let primo = session.engine.filo.first, !reduceMotion {
+            popIdx = primo
+            popScale = 0.97
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 16_000_000)
+                withAnimation(FiloMotion.tile) { popScale = 1 }
+            }
+        }
+        guard nuovo >= 2, !reduceMotion else { trimFilo = 1; return }
+        trimFilo = CGFloat(nuovo - 2) / CGFloat(nuovo - 1)
+        withAnimation(FiloMotion.segment) { trimFilo = 1 }
+    }
+
+    private func assesta() {
+        guard !reduceMotion else { return }
+        withAnimation(FiloMotion.settle) { endScale = 1.08 }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 140_000_000)
+            withAnimation(FiloMotion.settle) { endScale = 1 }
+        }
     }
 
     private func aggiornaSoluzione(attivo: Bool, animato: Bool) {
@@ -126,73 +183,55 @@ struct PracticeBoardView: View {
         }
     }
 
-    private func centro(_ idx: Int, side: CGFloat) -> CGPoint {
-        CGPoint(x: CGFloat(idx % 5) * (side + gap) + side / 2,
-                y: CGFloat(idx / 5) * (side + gap) + side / 2)
+    /// Gioca la mossa sulla sessione, applica la resa d'esito (visuale +
+    /// haptics) e la inoltra al genitore.
+    private func muovi(_ idx: Int, viaTap: Bool) {
+        let prima = session.engine.filo
+        let m = session.gioca(idx, viaTap: viaTap)
+        reagisci(m, percorso: prima + [idx])
+        onMove(m)
     }
 
-    @ViewBuilder
-    private func overlay(side: CGFloat) -> some View {
-        ZStack(alignment: .topLeading) {
-            if session.revealSolution {
-                PolylineShape(points: session.puzzle.percorsoSarto.map { centro($0, side: side) })
-                    .trim(from: 0, to: solTrim)
-                    .stroke(Theme.sarto,
-                            style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+    private func reagisci(_ m: Mossa, percorso: [Int]) {
+        switch m {
+        case .vittoria:
+            if outcomeHaptics { FiloHaptics.success() }
+        case .spezzato, .annodato:
+            let esito: EsitoFilo = (m == .spezzato) ? .spezzato : .annodato
+            if outcomeHaptics {
+                if esito == .spezzato { FiloHaptics.error() } else { FiloHaptics.warning() }
             }
-            if let primo = session.engine.filo.first {
-                Circle().stroke(Theme.sarto, lineWidth: 2)
-                    .frame(width: 18, height: 18).position(centro(primo, side: side))
-                Circle().fill(Theme.filoGradient)
-                    .frame(width: 11, height: 11).position(centro(primo, side: side))
-                if session.engine.filo.count >= 2 {
-                    if Theme.usaArte {
-                        CordaOro(punti: session.engine.filo.map { centro($0, side: side) },
-                                 trim: trimFilo)
-                    } else {
-                        PolylineShape(points: session.engine.filo.map { centro($0, side: side) })
-                            .trim(from: 0, to: trimFilo)
-                            .stroke(Theme.filoGradient,
-                                    style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
-                            .shadow(color: Theme.filo.opacity(0.6), radius: 4, y: 0)
-                    }
-                }
+            let nuovo = EsitoLocale(id: (esitoLocale?.id ?? 0) + 1, percorso: percorso, esito: esito)
+            esitoLocale = nuovo
+            let durata: Double = reduceMotion ? 0.24 : (esito == .spezzato ? 0.7 : 0.6)
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: UInt64(durata * 1_000_000_000))
+                if esitoLocale == nuovo { esitoLocale = nil }
             }
+        default:
+            break
         }
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
-
-    private func cella(at p: CGPoint, side: CGFloat) -> Int? {
-        let step = side + gap
-        let c = Int(floor(p.x / step)), r = Int(floor(p.y / step))
-        guard (0..<5).contains(c), (0..<5).contains(r) else { return nil }
-        let x0 = CGFloat(c) * step, y0 = CGFloat(r) * step
-        let m = side * 0.12
-        guard p.x >= x0 + m, p.x <= x0 + side - m,
-              p.y >= y0 + m, p.y <= y0 + side - m else { return nil }
-        return r * 5 + c
     }
 
     private func dragGesture(side: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .local)
             .onChanged { g in
                 guard !session.lockInput, !session.engine.gameOver else { return }
-                guard let idx = cella(at: g.location, side: side) else { return }
+                guard let idx = BoardMetrics.cell(at: g.location, side: side) else { return }
                 if !dragAttivo {
                     dragAttivo = true
                     caselleAlDown = session.engine.filo.count
                     downSuUltima = (session.engine.filo.last == idx)
-                    if !downSuUltima { onMove(session.gioca(idx, viaTap: true)) }
+                    if !downSuUltima { muovi(idx, viaTap: true) }
                 } else {
-                    onMove(session.gioca(idx, viaTap: false))
+                    muovi(idx, viaTap: false)
                 }
             }
             .onEnded { g in
                 if dragAttivo, downSuUltima,
                    session.engine.filo.count == caselleAlDown,
                    !session.engine.gameOver, !session.lockInput,
-                   let idx = cella(at: g.location, side: side),
+                   let idx = BoardMetrics.cell(at: g.location, side: side),
                    idx == session.engine.filo.last {
                     session.tapSuUltima(idx)
                 }
@@ -202,73 +241,29 @@ struct PracticeBoardView: View {
     }
 }
 
-/// Singola casella della board di pratica (stati default / in-filo / ultima / soluzione).
+/// Singola casella della board di pratica (layer di fondo): tessera piatta,
+/// breve bordo error sulla mossa non valida, accessibilità.
 private struct PracticeCellView: View {
     @ObservedObject var session: PracticeSession
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let idx: Int
     let side: CGFloat
 
     var body: some View {
-        let pos = session.engine.filo.firstIndex(of: idx)
-        let inFilo = pos != nil
-        let sulSarto = session.revealSolution && session.puzzle.percorsoSarto.contains(idx)
-        let flashNonValida = reduceMotion && session.casellaNonValida == idx
-        let arte = Theme.usaArte
-        let raggio: CGFloat = arte ? Arte.raggio(side) : 12
+        let inFilo = session.engine.filo.contains(idx)
+        let nonValida = session.casellaNonValida == idx
 
         ZStack {
-            if arte {
-                TesseraArte(accesa: inFilo, lato: side, accesaParziale: sulSarto)
-                if flashNonValida {
-                    RoundedRectangle(cornerRadius: raggio)
-                        .strokeBorder(Theme.spezzato, lineWidth: 2)
-                }
-            } else {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(inFilo ? AnyShapeStyle(Theme.cellaAccesa) : AnyShapeStyle(Theme.surface2))
-                RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(flashNonValida ? Theme.spezzato
-                                  : (inFilo ? Theme.filoScuro : Theme.border), lineWidth: 1)
+            TesseraArte(accesa: inFilo, lato: side)
+            if nonValida {
+                RoundedRectangle(cornerRadius: Arte.raggio(side), style: .continuous)
+                    .strokeBorder(Theme.spezzato, lineWidth: 1.5)
+                    .transition(.opacity)
             }
-            if sulSarto {
-                RoundedRectangle(cornerRadius: max(2, raggio - 3))
-                    .strokeBorder(Theme.sarto, style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
-                    .padding(2)
-            }
-            // numero e badge d'ordine: nel layer PracticeNumeroView, sopra il filo
         }
-        .modifier(ShakeEffect(travel: reduceMotion ? 0 : 4,
-                              shakes: CGFloat(session.shakes[idx] ?? 0)))
-        .animation(reduceMotion ? nil : .linear(duration: 0.24), value: session.shakes[idx])
         .animation(.easeInOut(duration: 0.16), value: inFilo)
+        .animation(.easeOut(duration: 0.12), value: nonValida)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("Casella riga \(idx / 5 + 1) colonna \(idx % 5 + 1), valore \(session.puzzle.valori[idx])"))
         .accessibilityAddTraits(.isButton)
-    }
-}
-
-/// Layer NUMERI della board di pratica (sopra il filo): numero con alone di
-/// contrasto + badge d'ordine, stessa geometria e shake della cella sotto.
-private struct PracticeNumeroView: View {
-    @ObservedObject var session: PracticeSession
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    let idx: Int
-    let side: CGFloat
-
-    var body: some View {
-        let pos = session.engine.filo.firstIndex(of: idx)
-        NumeroCella(valore: session.puzzle.valori[idx], accesa: pos != nil,
-                    font: .system(size: max(17, side * 0.4), weight: .semibold, design: .monospaced))
-            .frame(width: side, height: side)
-            .overlay(alignment: .topTrailing) {
-                if let p = pos { BadgeOrdine(passo: p + 1) }
-            }
-            .modifier(ShakeEffect(travel: reduceMotion ? 0 : 4,
-                                  shakes: CGFloat(session.shakes[idx] ?? 0)))
-            .animation(reduceMotion ? nil : .linear(duration: 0.24), value: session.shakes[idx])
-            .animation(.easeInOut(duration: 0.16), value: pos != nil)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
     }
 }

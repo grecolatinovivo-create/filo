@@ -325,7 +325,7 @@ final class GameViewModel: ObservableObject {
         }
     }
 
-    // MARK: Esiti (sequenze animate + haptics UINotificationFeedbackGenerator)
+    // MARK: Esiti (sequenze animate + haptics FiloHaptics, spec §8)
 
     private func gestisciVittoria() {
         lockInput = true
@@ -338,7 +338,7 @@ final class GameViewModel: ObservableObject {
                        gold: res.gold, oggi: o)
         salvaStats()
         salvaOggi()
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        FiloHaptics.success()
         let parole = res.gold ? String(localized: "Tre stelle, hai battuto il Sarto!")
             : (res.stelle == 3 ? String(localized: "Tre stelle")
                : res.stelle == 2 ? String(localized: "Due stelle") : String(localized: "Una stella"))
@@ -350,10 +350,10 @@ final class GameViewModel: ObservableObject {
         lockInput = true
         guard let concluso = engine.fili.last else { return }
         esitoVisuale = EsitoVisuale(percorso: percorso, esito: esito)
-        if esito == .strappato {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        } else {
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+        switch esito {
+        case .strappato: FiloHaptics.medium()      // filo tagliato
+        case .annodato: FiloHaptics.warning()      // vicolo cieco
+        default: FiloHaptics.error()               // somma superata
         }
         salvaOggi()
         let n = engine.filiRimasti

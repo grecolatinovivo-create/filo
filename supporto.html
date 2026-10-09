@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E1220">
+<title>Supporto — FILO</title>
+<meta name="description" content="Assistenza FILO: come si gioca, domande frequenti e contatti. Support for FILO in English below.">
+<meta name="robots" content="index, follow">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%230E1220'/%3E%3Cpath d='M22 72 Q40 18 62 46 T82 34' stroke='%23F5B531' stroke-width='7' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='82' cy='34' r='5' fill='%23F5B531'/%3E%3C/svg%3E">
+<style>
+  :root{ --bg:#0E1220; --bg2:#171238; --gold:#F5B531; --goldh:#FFD766; --text:#F2F5FB; --muted:#9FB0CC; --surface:#1B2338; --border:#33406A; }
+  *,*::before,*::after{ box-sizing:border-box; margin:0; padding:0; }
+  html{ overscroll-behavior:none; scroll-behavior:smooth; }
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--text); line-height:1.6; overscroll-behavior:none;
+    background:radial-gradient(120% 80% at 50% 0%, var(--bg2) 0%, var(--bg) 60%);
+    background-color:var(--bg);
+    min-height:100vh; padding:env(safe-area-inset-top) 20px 48px;
+    overflow-wrap:break-word;
+  }
+  .wrap{ width:100%; max-width:680px; margin:0 auto; }
+  .skip{ position:absolute; left:-9999px; top:8px; background:var(--gold); color:#141032; padding:8px 14px; border-radius:999px; font-weight:700; text-decoration:none; }
+  .skip:focus{ left:12px; z-index:10; }
+  header.top{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:22px 0 8px; }
+  .brand{ font-size:1.6rem; font-weight:800; letter-spacing:.26em; text-decoration:none;
+    background:linear-gradient(135deg,var(--goldh),var(--gold)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .langs{ display:flex; gap:6px; font-size:.9rem; }
+  .langs a{ color:var(--text); text-decoration:none; border:1.5px solid var(--border); border-radius:999px; padding:6px 14px; min-height:44px; display:inline-flex; align-items:center; }
+  .langs a:hover{ border-color:var(--gold); }
+  h1{ font-size:clamp(1.7rem,6vw,2.3rem); line-height:1.2; margin:26px 0 6px; }
+  h2{ font-size:1.15rem; margin:30px 0 10px; color:var(--goldh); }
+  p, li{ color:var(--text); }
+  p + p{ margin-top:10px; }
+  .meta{ color:var(--muted); font-size:.95rem; }
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:18px 20px; }
+  .card ol{ padding-left:1.25em; display:flex; flex-direction:column; gap:8px; }
+  details{ background:var(--surface); border:1px solid var(--border); border-radius:14px; margin-top:10px; }
+  details[open]{ border-color:var(--gold); }
+  summary{ cursor:pointer; font-weight:700; padding:12px 16px; min-height:44px; display:flex; align-items:center; gap:10px; list-style:none; }
+  summary::-webkit-details-marker{ display:none; }
+  summary::before{ content:"+"; color:var(--gold); font-weight:800; width:1em; flex:none; text-align:center; }
+  details[open] summary::before{ content:"−"; }
+  details > p{ padding:0 16px 14px 42px; }
+  summary:focus-visible{ outline:3px solid var(--goldh); outline-offset:2px; border-radius:12px; }
+  .contact{ display:inline-flex; align-items:center; justify-content:center; min-height:48px; margin-top:12px; font-weight:700; text-decoration:none;
+    color:#141032; background:linear-gradient(135deg,var(--goldh),var(--gold)); border-radius:999px; padding:12px 26px; max-width:100%; }
+  .contact:hover{ color:#141032; }
+  a{ color:var(--gold); text-underline-offset:3px; }
+  a:hover{ color:var(--goldh); }
+  a:focus-visible{ outline:3px solid var(--goldh); outline-offset:3px; border-radius:6px; }
+  section.lang{ padding-top:8px; }
+  hr{ border:0; border-top:1px solid var(--border); margin:48px 0 20px; }
+  .back{ display:inline-flex; align-items:center; gap:8px; margin-top:34px; min-height:44px; font-weight:700; color:var(--text); text-decoration:none;
+    border:1.5px solid var(--border); border-radius:999px; padding:10px 24px; }
+  .back:hover{ border-color:var(--gold); color:var(--text); }
+  footer{ margin-top:40px; color:var(--muted); font-size:.85rem; text-align:center; }
+  footer a{ color:var(--gold); }
+  @media (prefers-reduced-motion:reduce){ html{ scroll-behavior:auto; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#it">Vai al contenuto</a>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="/" aria-label="FILO, torna alla home">FILO</a>
+    <nav class="langs" aria-label="Lingua / Language">
+      <a href="#it" lang="it">Italiano</a>
+      <a href="#en" lang="en">English</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="it" class="lang" lang="it" aria-labelledby="it-title">
+      <h1 id="it-title">Supporto</h1>
+      <p class="meta">Assistenza per l'app FILO e per il gioco sul web.</p>
+
+      <h2>Come si gioca</h2>
+      <div class="card">
+        <ol>
+          <li>Ogni giorno c'è una griglia 5×5 di numeri e una <strong>Somma del Giorno</strong>.</li>
+          <li>Traccia un <strong>filo</strong> continuo di caselle adiacenti (niente diagonali) fino a fare <strong>esattamente</strong> quella somma. Il filo non si riavvolge.</li>
+          <li>Hai <strong>3 fili</strong>: se superi la somma il filo si spezza, se resti senza uscite si annoda.</li>
+          <li>Più caselle usi, più stelle ottieni. Il Sarto è il percorso d'autore: pareggia la sua lunghezza per 3 stelle, superala per batterlo 🥇.</li>
+        </ol>
+      </div>
+
+      <h2>Domande frequenti</h2>
+      <details>
+        <summary>Il puzzle è uguale per tutti?</summary>
+        <p>Sì. Il FILO del giorno è lo stesso per tutti, in tutto il mondo e su ogni dispositivo, app o web: così puoi confrontare il risultato con chi vuoi.</p>
+      </details>
+      <details>
+        <summary>Quando esce il nuovo FILO?</summary>
+        <p>A mezzanotte, secondo l'ora locale del tuo dispositivo. Se l'app è aperta allo scoccare della mezzanotte, ti avvisa che c'è un nuovo FILO.</p>
+      </details>
+      <details>
+        <summary>Come funziona la serie (streak)?</summary>
+        <p>La serie conta i giorni consecutivi in cui hai risolto il FILO del giorno. Se perdi una partita, o salti un giorno, la serie riparte da zero. Le partite dell'archivio e della modalità Salita non la influenzano.</p>
+      </details>
+      <details>
+        <summary>Ho cambiato telefono: perché ho perso statistiche e serie?</summary>
+        <p>FILO non ha account e non salva nulla online: statistiche, serie e preferenze esistono solo sul dispositivo su cui giochi. Se cambi dispositivo, disinstalli l'app o cancelli i dati del sito, ripartono da zero e non è possibile recuperarli. Anche app e sito web hanno progressi separati.</p>
+      </details>
+      <details>
+        <summary>Devo creare un account?</summary>
+        <p>No. Non serve alcun account né login: apri l'app e giochi. FILO è gratuito e senza pubblicità.</p>
+      </details>
+      <details>
+        <summary>Serve la connessione a Internet?</summary>
+        <p>No. Il gioco funziona anche offline.</p>
+      </details>
+
+      <h2>Contatti</h2>
+      <p>Hai trovato un problema o hai un suggerimento? Scrivici: rispondiamo appena possibile. Se puoi, indica il modello del dispositivo, la versione di iOS e il numero del FILO.</p>
+      <a class="contact" href="mailto:grecolatinovivo@gmail.com?subject=FILO%20-%20Supporto">grecolatinovivo@gmail.com</a>
+      <p style="margin-top:18px">Leggi anche l'<a href="/privacy#it">informativa sulla privacy</a>.</p>
+
+      <a class="back" href="/">← Torna alla home</a>
+    </section>
+
+    <hr>
+
+    <section id="en" class="lang" lang="en" aria-labelledby="en-title">
+      <h1 id="en-title">Support</h1>
+      <p class="meta">Help for the FILO app and the web game.</p>
+
+      <h2>How to play</h2>
+      <div class="card">
+        <ol>
+          <li>Every day there is a 5×5 grid of numbers and a <strong>Daily Sum</strong>.</li>
+          <li>Trace one continuous <strong>thread</strong> of adjacent cells (no diagonals) to make <strong>exactly</strong> that sum. The thread cannot be rewound.</li>
+          <li>You have <strong>3 threads</strong>: go over the sum and the thread snaps, run out of moves and it knots.</li>
+          <li>The more cells you use, the more stars you get. The Tailor is the author's path: match its length for 3 stars, beat it for 🥇.</li>
+        </ol>
+      </div>
+
+      <h2>Frequently asked questions</h2>
+      <details>
+        <summary>Is the puzzle the same for everyone?</summary>
+        <p>Yes. The daily FILO is the same for everyone, worldwide and on every device, app or web, so you can compare results with anyone.</p>
+      </details>
+      <details>
+        <summary>When does the new FILO come out?</summary>
+        <p>At midnight, in your device's local time. If the app is open at midnight, it lets you know a new FILO is ready.</p>
+      </details>
+      <details>
+        <summary>How does the streak work?</summary>
+        <p>The streak counts the consecutive days on which you solved the daily FILO. If you lose a game or skip a day, it starts again from zero. Archive games and Climb mode do not affect it.</p>
+      </details>
+      <details>
+        <summary>I changed phone: why did I lose my stats and streak?</summary>
+        <p>FILO has no accounts and stores nothing online: stats, streak and preferences exist only on the device you play on. If you switch devices, uninstall the app or clear the site data, they start again from zero and cannot be recovered. The app and the website also keep separate progress.</p>
+      </details>
+      <details>
+        <summary>Do I need an account?</summary>
+        <p>No. No account or sign-in is needed: open the app and play. FILO is free and ad-free.</p>
+      </details>
+      <details>
+        <summary>Do I need an Internet connection?</summary>
+        <p>No. The game also works offline.</p>
+      </details>
+
+      <h2>Contact</h2>
+      <p>Found a problem or have a suggestion? Write to us and we will reply as soon as possible. If you can, include your device model, iOS version and the FILO number.</p>
+      <a class="contact" href="mailto:grecolatinovivo@gmail.com?subject=FILO%20-%20Support">grecolatinovivo@gmail.com</a>
+      <p style="margin-top:18px">See also the <a href="/privacy#en">privacy policy</a>.</p>
+
+      <a class="back" href="/">← Back to home</a>
+    </section>
+  </main>
+
+  <footer>
+    FILO — © 2026 · <a href="/privacy">Privacy</a> · <a href="/">Home</a>
+  </footer>
+</div>
+</body>
+</html>

@@ -52,6 +52,8 @@
   .how ol{ margin:0; padding-left:1.2em; display:flex; flex-direction:column; gap:8px; }
   .how li{ color:var(--text); }
   footer{ margin-top:40px; color:var(--muted); font-size:.8rem; }
+  .legal{ margin-top:8px; color:var(--muted); font-size:.8rem; }
+  .legal a{ color:var(--gold); display:inline-block; padding:6px 4px; }
   @keyframes draw{ to{ stroke-dashoffset:0; } }
   @keyframes up{ to{ opacity:1; transform:none; } }
   @media (prefers-reduced-motion:reduce){
@@ -96,6 +98,7 @@
   </section>
 
   <footer>FILO — © 2026 · <a href="/gioca" style="color:var(--gold)">gioca nel browser</a></footer>
+  <nav class="legal" aria-label="Privacy e supporto"><a href="/privacy">Privacy</a> · <a class="sup" href="/supporto">Supporto</a></nav>
 </main>
 
 <script>
@@ -189,6 +192,8 @@
   var lis = document.querySelectorAll('.how ol li');
   for (var j=0;j<lis.length && j<t.li.length;j++) lis[j].innerHTML = t.li[j];
   put('footer', t.foot);
+  var SUP = {it:'Supporto',en:'Support',fr:'Assistance',es:'Soporte',de:'Hilfe',zh:'支持',pt:'Suporte',ja:'サポート'};
+  put('.legal .sup', SUP[L]);
 })();
 </script>
 </body>

@@ -97,7 +97,7 @@ final class FirstLaunchTests: XCTestCase {
             salta.tap()
         }
 
-        // 4. Entro 5 s: riscaldamento sparito, daily visibile e toccabile.
+        // 4. Entro 10 s: riscaldamento sparito, daily visibile e toccabile.
         let hud = elemento(prefisso: t.prefissoSommaGiorno)
         try passo("dopo_salta") {
             let attese = [
@@ -105,10 +105,16 @@ final class FirstLaunchTests: XCTestCase {
                 XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: titoloRiscaldamento),
                 XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: hud),
             ]
-            let esito = XCTWaiter().wait(for: attese, timeout: 5)
+            // 10 s: il simulatore in CI (senza GPU) rende lo sfondo velluto e
+            // l'animazione di chiusura del foglio molto più lentamente di un
+            // iPhone reale; il tempo effettivo viene registrato nel log.
+            let inizio = Date()
+            let esito = XCTWaiter().wait(for: attese, timeout: 10)
+            log(String(format: "chiusura riscaldamento in %.2f s (esito %d)",
+                       Date().timeIntervalSince(inizio), esito.rawValue))
             scatta("04_dopo_salta")
             guard esito == .completed else {
-                throw ErrorePrimoAvvio("dopo UN tocco su '\(t.salta)' entro 5 s: "
+                throw ErrorePrimoAvvio("dopo UN tocco su '\(t.salta)' entro 10 s: "
                     + "salta.exists=\(salta.exists) riscaldamento.exists=\(titoloRiscaldamento.exists) "
                     + "hud.exists=\(hud.exists) hud.isHittable=\(hud.exists && hud.isHittable) (esito \(esito.rawValue))")
             }

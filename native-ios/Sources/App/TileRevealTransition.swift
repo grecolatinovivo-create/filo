@@ -96,8 +96,8 @@ struct TileRevealOverlay: View {
         let ondaMax = max(1.0, Double(cols - 1) + Double(rows - 1))
         return ZStack(alignment: .topLeading) {
             // Fondale opaco: copre le fughe fra le tessere quando lo schermo
-            // cambia "sotto" la griglia.
-            Theme.bg
+            // cambia "sotto" la griglia (col kit grafico: il velluto).
+            SfondoTema()
                 .opacity(visibile ? 1 : 0)
                 .animation(.easeInOut(duration: 0.22).delay(visibile ? 0.18 : 0.05),
                            value: controller.fase)
@@ -120,17 +120,22 @@ struct TileRevealOverlay: View {
 }
 
 /// Singola tessera, stile CellView (RoundedRectangle surface2 + bordo +
-/// numero monospaced).
+/// numero monospaced; col kit grafico la tessera velluto TileIdle).
 private struct TileCell: View {
     let numero: Int
     let lato: CGFloat
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Theme.surface2)
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(Theme.border, lineWidth: 1)
+            if Theme.usaArte {
+                // kit grafico: la stessa tessera velluto della griglia
+                TesseraArte(accesa: false, lato: lato - 4)
+            } else {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Theme.surface2)
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(Theme.border, lineWidth: 1)
+            }
             Text(verbatim: "\(numero)")
                 .font(.system(size: lato * 0.38, weight: .semibold, design: .monospaced))
                 .monospacedDigit()

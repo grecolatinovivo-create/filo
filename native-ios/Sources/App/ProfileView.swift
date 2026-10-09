@@ -19,7 +19,7 @@ struct ProfileView: View {
 
     var body: some View {
         ZStack {
-            Theme.bgGradient.ignoresSafeArea()
+            SfondoTema()
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     header

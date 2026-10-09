@@ -150,7 +150,7 @@ struct SalitaView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            Theme.bgGradient.ignoresSafeArea()
+            SfondoTema()
 
             VStack(spacing: 0) {
                 header
@@ -239,9 +239,13 @@ struct SalitaView: View {
     private var viteView: some View {
         HStack(spacing: 3) {
             ForEach(0..<3, id: \.self) { i in
-                Image(systemName: i < vm.vite ? "heart.fill" : "heart")
-                    .font(.subheadline)
-                    .foregroundStyle(i < vm.vite ? Theme.spezzato : Theme.textMuted)
+                if Theme.usaArte {
+                    IconaArte(tipo: .cuore, spenta: i >= vm.vite, lato: 20)
+                } else {
+                    Image(systemName: i < vm.vite ? "heart.fill" : "heart")
+                        .font(.subheadline)
+                        .foregroundStyle(i < vm.vite ? Theme.spezzato : Theme.textMuted)
+                }
             }
         }
         .accessibilityElement(children: .ignore)
@@ -279,8 +283,15 @@ struct SalitaView: View {
             }
             .padding(28)
             .frame(maxWidth: 360)
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20))
-            .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Theme.border, lineWidth: 1))
+            .background {
+                if Theme.usaArte {
+                    PannelloVelluto(raggio: 20, bordoOpacita: 0.8)
+                        .background(Theme.bg.opacity(0.6), in: RoundedRectangle(cornerRadius: 20))
+                } else {
+                    RoundedRectangle(cornerRadius: 20).fill(Theme.surface)
+                        .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Theme.border, lineWidth: 1))
+                }
+            }
             .padding(24)
         }
         .transition(.opacity)

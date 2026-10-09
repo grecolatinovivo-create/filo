@@ -14,7 +14,7 @@ struct ProgressiveOnboardingView: View {
 
     var body: some View {
         ZStack {
-            Theme.bgGradient.ignoresSafeArea()
+            SfondoTema()
             SfidaPratica(
                 target: targets[indice],
                 indice: indice,

@@ -16,7 +16,7 @@ struct ArchiveView: View {
 
     var body: some View {
         ZStack {
-            Theme.bgGradient.ignoresSafeArea()
+            SfondoTema()
             if !store.featuresUnlocked {
                 paywall
             } else if giorni.isEmpty {
@@ -88,8 +88,14 @@ struct ArchiveView: View {
                 .foregroundStyle(Theme.filo)
         }
         .padding(14)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.border, lineWidth: 1))
+        .background {
+            if Theme.usaArte {
+                PannelloVelluto(raggio: 14, bordoOpacita: 0.45, bordoSpessore: 1)
+            } else {
+                RoundedRectangle(cornerRadius: 14).fill(Theme.surface)
+                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.border, lineWidth: 1))
+            }
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("FILO numero \(g.numero), \(g.etichettaData), somma \(g.somma)")
     }
@@ -233,7 +239,7 @@ struct ArchivePlayerView: View {
 
     var body: some View {
         ZStack {
-            Theme.bgGradient.ignoresSafeArea()
+            SfondoTema()
             VStack(spacing: 14) {
                 HStack {
                     Text("FILO #\(s.numero)")
@@ -301,6 +307,18 @@ private struct ArchiveBoard: View {
                                 y: CGFloat(idx / 5) * (side + gap))
                 }
                 overlay(side: side)
+                // numeri SOPRA il filo (layer inerte)
+                ForEach(0..<25, id: \.self) { idx in
+                    NumeroCella(valore: session.puzzle.valori[idx],
+                                accesa: session.engine.filo.contains(idx),
+                                font: .system(size: max(17, side * 0.4), weight: .semibold,
+                                              design: .monospaced))
+                        .frame(width: side, height: side)
+                        .animation(.easeInOut(duration: 0.16),
+                                   value: session.engine.filo.contains(idx))
+                        .offset(x: CGFloat(idx % 5) * (side + gap),
+                                y: CGFloat(idx / 5) * (side + gap))
+                }
             }
             .frame(width: geo.size.width, height: geo.size.width, alignment: .topLeading)
             .contentShape(Rectangle())
@@ -338,22 +356,24 @@ private struct ArchiveBoard: View {
     }
 
     private func cella(idx: Int, side: CGFloat) -> some View {
-        let pos = session.engine.filo.firstIndex(of: idx)
-        let inFilo = pos != nil
+        let inFilo = session.engine.filo.contains(idx)
         let sulSarto = session.revealSarto && session.puzzle.percorsoSarto.contains(idx)
+        let arte = Theme.usaArte
         return ZStack {
-            RoundedRectangle(cornerRadius: 10)
-                .fill(inFilo ? AnyShapeStyle(Theme.cellaAccesa) : AnyShapeStyle(Theme.surface2))
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(inFilo ? Theme.filoScuro : Theme.border, lineWidth: 1)
+            if arte {
+                TesseraArte(accesa: inFilo, lato: side, accesaParziale: sulSarto)
+            } else {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(inFilo ? AnyShapeStyle(Theme.cellaAccesa) : AnyShapeStyle(Theme.surface2))
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(inFilo ? Theme.filoScuro : Theme.border, lineWidth: 1)
+            }
             if sulSarto {
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: arte ? max(2, Arte.raggio(side) - 3) : 8)
                     .strokeBorder(Theme.sarto, style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
                     .padding(2)
             }
-            Text("\(session.puzzle.valori[idx])")
-                .font(.system(size: max(17, side * 0.4), weight: .semibold, design: .monospaced))
-                .foregroundStyle(inFilo ? Theme.bg : Theme.text)
+            // numero: nel layer sopra il filo (vedi body)
         }
         .animation(.easeInOut(duration: 0.16), value: inFilo)
     }
@@ -369,9 +389,13 @@ private struct ArchiveBoard: View {
                 Circle().fill(Theme.filo).frame(width: 10, height: 10)
                     .position(centro(primo, side: side))
                 if session.engine.filo.count >= 2 {
-                    PolylineShape(points: session.engine.filo.map { centro($0, side: side) })
-                        .stroke(Theme.filoGradient,
-                                style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
+                    if Theme.usaArte {
+                        CordaOro(punti: session.engine.filo.map { centro($0, side: side) })
+                    } else {
+                        PolylineShape(points: session.engine.filo.map { centro($0, side: side) })
+                            .stroke(Theme.filoGradient,
+                                    style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
+                    }
                 }
             }
         }

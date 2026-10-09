@@ -7,7 +7,7 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
-            Theme.bgGradient.ignoresSafeArea()
+            SfondoTema()
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack {
@@ -86,13 +86,15 @@ private struct DemoView: View {
                 ForEach(0..<9, id: \.self) { i in
                     let acceso = passo >= 0 && percorso.prefix(min(passo, 3) + 1).contains(i)
                     ZStack {
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(acceso ? Theme.filo : Theme.surface2)
-                        RoundedRectangle(cornerRadius: 8)
-                            .strokeBorder(acceso ? Theme.filoScuro : Theme.border, lineWidth: 1)
-                        Text("\(valori[i])")
-                            .font(.system(.body, design: .monospaced).weight(.semibold))
-                            .foregroundStyle(acceso ? Theme.bg : Theme.text)
+                        if Theme.usaArte {
+                            TesseraArte(accesa: acceso, lato: lato)
+                        } else {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(acceso ? Theme.filo : Theme.surface2)
+                            RoundedRectangle(cornerRadius: 8)
+                                .strokeBorder(acceso ? Theme.filoScuro : Theme.border, lineWidth: 1)
+                        }
+                        // numero: nel layer sopra il filo (sotto)
                     }
                     .frame(width: lato, height: lato)
                     .offset(x: CGFloat(i % 3) * (lato + gap),
@@ -104,10 +106,23 @@ private struct DemoView: View {
                     Circle().fill(Theme.filo).frame(width: 8, height: 8)
                         .position(punti[0])
                     if punti.count >= 2 {
-                        PolylineShape(points: punti)
-                            .stroke(Theme.filo,
-                                    style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                        if Theme.usaArte {
+                            CordaOro(punti: Array(punti), spessore: 4.5)
+                        } else {
+                            PolylineShape(points: punti)
+                                .stroke(Theme.filo,
+                                        style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                        }
                     }
+                }
+                // numeri SOPRA il filo
+                ForEach(0..<9, id: \.self) { i in
+                    let acceso = passo >= 0 && percorso.prefix(min(passo, 3) + 1).contains(i)
+                    NumeroCella(valore: valori[i], accesa: acceso)
+                        .frame(width: lato, height: lato)
+                        .offset(x: CGFloat(i % 3) * (lato + gap),
+                                y: CGFloat(i / 3) * (lato + gap))
+                        .animation(.easeInOut(duration: 0.16), value: acceso)
                 }
             }
             .frame(width: lato * 3 + gap * 2, height: lato * 3 + gap * 2)

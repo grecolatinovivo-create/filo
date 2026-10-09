@@ -20,7 +20,7 @@ struct ResultView: View {
 
     var body: some View {
         ZStack {
-            Theme.bgGradient.ignoresSafeArea()
+            SfondoTema()
             ScrollView {
                 VStack(spacing: 12) {
                     // 1. eyebrow
@@ -81,7 +81,13 @@ struct ResultView: View {
                         .foregroundStyle(Theme.text)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(12)
-                        .background(Theme.surface2, in: RoundedRectangle(cornerRadius: 10))
+                        .background {
+                            if Theme.usaArte {
+                                PannelloVelluto(raggio: 10, bordoOpacita: 0.35, bordoSpessore: 1)
+                            } else {
+                                RoundedRectangle(cornerRadius: 10).fill(Theme.surface2)
+                            }
+                        }
                         .accessibilityLabel("Anteprima del risultato da condividere")
                     Text(captionInvito)
                         .font(.subheadline)
@@ -132,16 +138,31 @@ struct ResultView: View {
     // MARK: Stelle animate (stagger 150ms, scale 0→1)
 
     private var stelle: some View {
-        let totale = vm.stelleOggi + (vm.sartoBattutoOggi ? 1 : 0)
-        return HStack(spacing: 4) {
+        let arte = Theme.usaArte
+        // Kit grafico: sempre 3 stelle (piene / spente) + medaglia se il Sarto
+        // è battuto. Fallback vettoriale: solo le stelle guadagnate (emoji).
+        let stelleMostrate = arte ? 3 : vm.stelleOggi
+        let totale = stelleMostrate + (vm.sartoBattutoOggi ? 1 : 0)
+        return HStack(spacing: arte ? 6 : 4) {
             ForEach(0..<totale, id: \.self) { i in
-                Text(i < vm.stelleOggi ? "⭐" : "🥇")
-                    .font(.largeTitle)
-                    .scaleEffect(stelleVisibili > i ? 1 : 0.01)
-                    .animation(reduceMotion ? nil
-                               : .spring(response: 0.25, dampingFraction: 0.6)
-                                   .delay(Double(i) * 0.15),
-                               value: stelleVisibili)
+                Group {
+                    if arte {
+                        if i < stelleMostrate {
+                            IconaArte(tipo: .stella, spenta: i >= vm.stelleOggi, lato: 44)
+                        } else {
+                            IconaArte(tipo: .medaglia, lato: 48)
+                                .shadow(color: Arte.oro.opacity(0.45), radius: 8)
+                        }
+                    } else {
+                        Text(i < vm.stelleOggi ? "⭐" : "🥇")
+                            .font(.largeTitle)
+                    }
+                }
+                .scaleEffect(stelleVisibili > i ? 1 : 0.01)
+                .animation(reduceMotion ? nil
+                           : .spring(response: 0.25, dampingFraction: 0.6)
+                               .delay(Double(i) * 0.15),
+                           value: stelleVisibili)
             }
         }
         .onAppear { stelleVisibili = totale }
@@ -227,19 +248,25 @@ struct MiniGridView: View {
                     let mio = vm.engine.percorsoVincente?.contains(idx) ?? false
                     let sulSarto = vm.puzzle.percorsoSarto.contains(idx)
                     ZStack {
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(mio ? Theme.filo : Theme.surface2)
-                        RoundedRectangle(cornerRadius: 4)
-                            .strokeBorder(mio ? Theme.filoScuro : Theme.border, lineWidth: 1)
+                        if Theme.usaArte {
+                            TesseraArte(accesa: mio, lato: side)
+                        } else {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(mio ? Theme.filo : Theme.surface2)
+                            RoundedRectangle(cornerRadius: 4)
+                                .strokeBorder(mio ? Theme.filoScuro : Theme.border, lineWidth: 1)
+                        }
                         if sulSarto {
-                            RoundedRectangle(cornerRadius: 3)
+                            RoundedRectangle(cornerRadius: Theme.usaArte ? max(2, Arte.raggio(side) - 1) : 3)
                                 .strokeBorder(Theme.sarto,
                                               style: StrokeStyle(lineWidth: 1.5, dash: [3, 2]))
                                 .padding(1)
                         }
                         Text("\(vm.puzzle.valori[idx])")
                             .font(.system(size: 10, design: .monospaced))
-                            .foregroundStyle(mio ? Theme.bg : Theme.textMuted)
+                            .foregroundStyle(Theme.usaArte
+                                             ? (mio ? Arte.testoSuOro : Arte.testoSuVelluto)
+                                             : (mio ? Theme.bg : Theme.textMuted))
                     }
                     .frame(width: side, height: side)
                     .offset(x: CGFloat(idx % 5) * (side + gap),

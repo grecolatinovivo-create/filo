@@ -19,7 +19,7 @@ struct RootView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            Theme.bgGradient.ignoresSafeArea()
+            SfondoTema()
 
             VStack(spacing: 0) {
                 header
@@ -98,11 +98,22 @@ struct RootView: View {
 
             Spacer()
 
-            Text("FILO")
-                .font(.title2.weight(.heavy))
-                .kerning(8)
-                .foregroundStyle(Theme.text)
-                .accessibilityAddTraits(.isHeader)
+            if Theme.usaArte {
+                Image("LogoFilo")
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(height: 30)
+                    .accessibilityLabel(Text("FILO"))
+                    .accessibilityRemoveTraits(.isImage)
+                    .accessibilityAddTraits(.isHeader)
+            } else {
+                Text("FILO")
+                    .font(.title2.weight(.heavy))
+                    .kerning(8)
+                    .foregroundStyle(Theme.text)
+                    .accessibilityAddTraits(.isHeader)
+            }
 
             Spacer()
 

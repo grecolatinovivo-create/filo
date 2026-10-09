@@ -19,14 +19,20 @@ struct Palette: Equatable {
     let spezzato: Color
     let annodato: Color
     let overlay: Color
+    /// True se il tema usa il KIT GRAFICO raster (velluto + filo d'oro, asset
+    /// catalog: BgVelluto, TileIdle/TileLit, LogoFilo, Card*, Icon*). Solo
+    /// `notte`; gli altri temi restano con la resa vettoriale (fallback).
+    var usaArte: Bool = false
 
     /// Gradiente di sfondo (angolare morbido) — cuore del look "colorato".
     var bgGradient: LinearGradient {
         LinearGradient(colors: [bg, bg2], startPoint: .top, endPoint: .bottom)
     }
-    /// Gradiente del filo del giocatore (caldo, con brillantezza).
+    /// Gradiente del filo del giocatore (caldo, con brillantezza). Col kit
+    /// grafico è l'oro a tre toni della "corda d'oro" (Arte.oro*).
     var filoGradient: LinearGradient {
-        LinearGradient(colors: [filoHover, filo], startPoint: .topLeading, endPoint: .bottomTrailing)
+        if usaArte { return Arte.oroGradient }
+        return LinearGradient(colors: [filoHover, filo], startPoint: .topLeading, endPoint: .bottomTrailing)
     }
     /// Riempimento di una casella accesa.
     var cellaAccesa: LinearGradient {
@@ -65,7 +71,8 @@ enum ThemeID: String, CaseIterable, Identifiable, Codable {
                 filoHover: Color(hexRGB: 0xFFD15C), filoScuro: Color(hexRGB: 0x8A6A1F),
                 sarto: Color(hexRGB: 0xF7E7B4), ok: Color(hexRGB: 0x38D39F),
                 spezzato: Color(hexRGB: 0xFF6B6B), annodato: Color(hexRGB: 0x6EA8FE),
-                overlay: Color(hexRGB: 0x05070D).opacity(0.74))
+                overlay: Color(hexRGB: 0x05070D).opacity(0.74),
+                usaArte: true)
         case .aurora:
             // Viola-teal con filo verde-acqua brillante.
             return Palette(
@@ -162,6 +169,8 @@ enum Theme {
     static var spezzato: Color  { current.spezzato }
     static var annodato: Color  { current.annodato }
     static var overlay: Color   { current.overlay }
+    /// Kit grafico raster attivo (solo tema `notte`).
+    static var usaArte: Bool    { current.usaArte }
 
     static var bgGradient: LinearGradient { current.bgGradient }
     static var filoGradient: LinearGradient { current.filoGradient }
@@ -192,11 +201,18 @@ struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.body.weight(.bold))
-            .foregroundStyle(Theme.bg)
+            .foregroundStyle(Theme.usaArte ? Arte.testoSuOro : Theme.bg)
             .padding(.vertical, 14)
             .padding(.horizontal, 28)
             .frame(minHeight: 48)
             .background(Theme.filoGradient)
+            .overlay {
+                // riflesso morbido in alto: "oro 3D" del kit grafico
+                if Theme.usaArte {
+                    LinearGradient(colors: [.white.opacity(0.35), .white.opacity(0)],
+                                   startPoint: .top, endPoint: .center)
+                }
+            }
             .clipShape(Capsule())
             .overlay(Capsule().strokeBorder(Theme.filoHover.opacity(0.5), lineWidth: 1))
             .shadow(color: Theme.filo.opacity(configuration.isPressed ? 0.15 : 0.35),
@@ -206,9 +222,15 @@ struct PrimaryButtonStyle: ButtonStyle {
     }
 }
 
-/// Bottone secondario rosso ("Strappa il filo", UX_SPEC §5.3).
+/// Bottone secondario rosso ("Strappa il filo", UX_SPEC §5.3). Col kit
+/// grafico: pannello velluto con bordo oro (il testo resta rosso: azione
+/// distruttiva).
 struct SecondaryButtonStyle: ButtonStyle {
     var enabled = true
+    private var bordo: AnyShapeStyle {
+        guard enabled else { return AnyShapeStyle(Theme.border) }
+        return Theme.usaArte ? AnyShapeStyle(Arte.oroGradient) : AnyShapeStyle(Theme.spezzato)
+    }
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.body.weight(.bold))
@@ -217,11 +239,12 @@ struct SecondaryButtonStyle: ButtonStyle {
             .padding(.horizontal, 28)
             .frame(minHeight: 48)
             .background(
-                Capsule().strokeBorder(enabled ? Theme.spezzato : Theme.border, lineWidth: 2)
+                Capsule().strokeBorder(bordo, lineWidth: Theme.usaArte ? 1.5 : 2)
             )
             .background(
                 Capsule().fill(configuration.isPressed && enabled
-                               ? Theme.spezzato.opacity(0.2) : Color.clear)
+                               ? Theme.spezzato.opacity(0.2)
+                               : (Theme.usaArte ? Arte.velluto.opacity(0.55) : Color.clear))
             )
             .opacity(enabled ? 1 : 0.55)
             .scaleEffect(configuration.isPressed && enabled ? 0.97 : 1)

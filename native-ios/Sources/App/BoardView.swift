@@ -27,6 +27,14 @@ struct BoardView: View {
                                 y: CGFloat(idx / 5) * (side + gap))
                 }
                 overlayFili(side: side)
+                // numeri e badge SOPRA il filo (layer inerte: tocchi e
+                // accessibilità restano sulle CellView sotto)
+                ForEach(0..<25, id: \.self) { idx in
+                    CellNumeroView(idx: idx, side: side)
+                        .frame(width: side, height: side)
+                        .offset(x: CGFloat(idx % 5) * (side + gap),
+                                y: CGFloat(idx / 5) * (side + gap))
+                }
             }
             // Le caselle sono posizionate con .offset (spostamento SOLO visivo):
             // senza un frame esplicito la ZStack resterebbe grande una casella e
@@ -106,11 +114,16 @@ struct BoardView: View {
                     .frame(width: 11, height: 11)
                     .position(centro(primo, side: side))
                 if vm.engine.filo.count >= 2 {
-                    PolylineShape(points: vm.engine.filo.map { centro($0, side: side) })
-                        .trim(from: 0, to: trimFilo)
-                        .stroke(Theme.filoGradient,
-                                style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
-                        .shadow(color: Theme.filo.opacity(0.6), radius: 4, y: 0)
+                    if Theme.usaArte {
+                        CordaOro(punti: vm.engine.filo.map { centro($0, side: side) },
+                                 trim: trimFilo)
+                    } else {
+                        PolylineShape(points: vm.engine.filo.map { centro($0, side: side) })
+                            .trim(from: 0, to: trimFilo)
+                            .stroke(Theme.filoGradient,
+                                    style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
+                            .shadow(color: Theme.filo.opacity(0.6), radius: 4, y: 0)
+                    }
                 }
             }
         }
@@ -204,7 +217,9 @@ private struct EsitoFiloOverlay: View {
     }
 }
 
-/// Singola casella: stati default / in-filo / ultima / sarto / shake (UX §5.1).
+/// Singola casella (layer di FONDO): stati default / in-filo / ultima /
+/// sarto / shake (UX §5.1), tocchi e accessibilità. Il numero e il badge
+/// d'ordine stanno in `CellNumeroView`, sopra il filo.
 struct CellView: View {
     @EnvironmentObject private var vm: GameViewModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -218,41 +233,35 @@ struct CellView: View {
         let ultima = inFilo && pos == vm.engine.filo.count - 1 && !vm.engine.gameOver
         let sulSarto = vm.revealSarto && vm.puzzle.percorsoSarto.contains(idx)
         let flashNonValida = reduceMotion && vm.casellaNonValida == idx
+        let arte = Theme.usaArte
+        let raggio: CGFloat = arte ? Arte.raggio(side) : 12
 
         ZStack {
-            RoundedRectangle(cornerRadius: 12)
-                .fill(inFilo ? AnyShapeStyle(Theme.cellaAccesa) : AnyShapeStyle(Theme.surface2))
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(flashNonValida ? Theme.spezzato
-                              : (inFilo ? Theme.filoScuro : Theme.border), lineWidth: 1)
+            if arte {
+                // kit grafico: tessera velluto / oro (corpo = cella)
+                TesseraArte(accesa: inFilo, lato: side, accesaParziale: sulSarto)
+                if flashNonValida {
+                    RoundedRectangle(cornerRadius: raggio)
+                        .strokeBorder(Theme.spezzato, lineWidth: 2)
+                }
+            } else {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(inFilo ? AnyShapeStyle(Theme.cellaAccesa) : AnyShapeStyle(Theme.surface2))
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(flashNonValida ? Theme.spezzato
+                                  : (inFilo ? Theme.filoScuro : Theme.border), lineWidth: 1)
+            }
             if sulSarto {
-                RoundedRectangle(cornerRadius: 9)
+                RoundedRectangle(cornerRadius: max(2, raggio - 3))
                     .strokeBorder(Theme.sarto,
                                   style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
                     .padding(2)
             }
-            Text("\(vm.puzzle.valori[idx])")
-                .font(.system(size: max(17, side * 0.4), weight: .semibold, design: .monospaced))
-                .monospacedDigit()
-                .foregroundStyle(inFilo ? Theme.bg : Theme.text)
-                .minimumScaleFactor(0.6)
-        }
-        .overlay(alignment: .topTrailing) {
-            if let p = pos {
-                // contatore d'ordine come chip circolare: chiaramente "passo n",
-                // non un vincolo di partenza.
-                Text("\(p + 1)")
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .foregroundStyle(Theme.filo)
-                    .frame(width: 16, height: 16)
-                    .background(Theme.bg.opacity(0.85), in: Circle())
-                    .overlay(Circle().strokeBorder(Theme.filo.opacity(0.5), lineWidth: 1))
-                    .padding(3)
-            }
+            // numero e badge d'ordine: nel layer CellNumeroView, sopra il filo
         }
         .overlay {
             if ultima {
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: raggio + 2)
                     .strokeBorder(Theme.filo.opacity(reduceMotion ? 0.5 : (pulse ? 0.2 : 0.6)),
                                   lineWidth: 3)
                     .padding(-3)
@@ -275,5 +284,35 @@ struct CellView: View {
         .accessibilityAction {
             vm.gioca(idx, viaTap: true)
         }
+    }
+}
+
+/// Layer NUMERI della casella (sopra il filo): numero con alone di contrasto
+/// e badge d'ordine; stessa geometria e stesso shake della CellView sotto.
+/// Inerte e nascosto all'accessibilità (le etichette restano sulle celle).
+private struct CellNumeroView: View {
+    @EnvironmentObject private var vm: GameViewModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let idx: Int
+    let side: CGFloat
+
+    var body: some View {
+        let pos = vm.engine.filo.firstIndex(of: idx)
+        NumeroCella(valore: vm.puzzle.valori[idx], accesa: pos != nil,
+                    font: .system(size: max(17, side * 0.4), weight: .semibold, design: .monospaced))
+            .frame(width: side, height: side)
+            .overlay(alignment: .topTrailing) {
+                if let p = pos {
+                    // contatore d'ordine come chip circolare: chiaramente
+                    // "passo n", non un vincolo di partenza.
+                    BadgeOrdine(passo: p + 1)
+                }
+            }
+            .modifier(ShakeEffect(travel: reduceMotion ? 0 : 4,
+                                  shakes: CGFloat(vm.shakes[idx] ?? 0)))
+            .animation(reduceMotion ? nil : .linear(duration: 0.24), value: vm.shakes[idx])
+            .animation(.easeInOut(duration: 0.16), value: pos != nil)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 }

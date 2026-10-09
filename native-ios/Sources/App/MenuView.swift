@@ -59,7 +59,7 @@ struct MenuView: View {
 
     var body: some View {
         ZStack {
-            Theme.bgGradient.ignoresSafeArea()
+            SfondoTema()
 
             VStack(spacing: 0) {
                 Spacer(minLength: 24)
@@ -122,12 +122,26 @@ struct MenuView: View {
 
     private var wordmark: some View {
         VStack(spacing: 6) {
-            Text("FILO")
-                .font(.system(size: 40, weight: .heavy))
-                .kerning(12)
-                .padding(.leading, 12)   // compensa il kerning finale
-                .foregroundStyle(Theme.filoGradient)
-                .accessibilityAddTraits(.isHeader)
+            if Theme.usaArte {
+                // Logo in corda d'oro: per VoiceOver (e per chi cerca il
+                // testo) resta l'intestazione "FILO".
+                Image("LogoFilo")
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(maxWidth: 240, maxHeight: 82)
+                    .shadow(color: Arte.oro.opacity(0.35), radius: 14)
+                    .accessibilityLabel(Text("FILO"))
+                    .accessibilityRemoveTraits(.isImage)
+                    .accessibilityAddTraits(.isHeader)
+            } else {
+                Text("FILO")
+                    .font(.system(size: 40, weight: .heavy))
+                    .kerning(12)
+                    .padding(.leading, 12)   // compensa il kerning finale
+                    .foregroundStyle(Theme.filoGradient)
+                    .accessibilityAddTraits(.isHeader)
+            }
             Text("FILO #\(vm.numero)")
                 .captionStyle()
         }
@@ -149,7 +163,11 @@ struct MenuView: View {
     private var dailyCardAccesa: some View {
         Button { apriDaily() } label: {
             HStack(spacing: 16) {
-                cardIcon(emoji: "🧵", tinta: Theme.filo)
+                if Theme.usaArte {
+                    cardIllustrazione("CardDaily")
+                } else {
+                    cardIcon(emoji: "🧵", tinta: Theme.filo)
+                }
                 VStack(alignment: .leading, spacing: 4) {
                     Text("FILO del giorno")
                         .font(.title3.weight(.bold))
@@ -169,11 +187,17 @@ struct MenuView: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(Theme.filo)
             }
-            .padding(20)
+            .padding(cardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22))
-            .overlay(RoundedRectangle(cornerRadius: 22)
-                .strokeBorder(Theme.filo.opacity(0.85), lineWidth: 2))
+            .background {
+                if Theme.usaArte {
+                    PannelloVelluto(raggio: 22, bordoOpacita: 1, bordoSpessore: 1.5)
+                } else {
+                    RoundedRectangle(cornerRadius: 22).fill(Theme.surface)
+                        .overlay(RoundedRectangle(cornerRadius: 22)
+                            .strokeBorder(Theme.filo.opacity(0.85), lineWidth: 2))
+                }
+            }
             .shadow(color: Theme.filo.opacity(glowPulse ? 0.5 : 0.22),
                     radius: glowPulse ? 18 : 10, y: 2)
         }
@@ -194,9 +218,15 @@ struct MenuView: View {
     private var dailyCardSpenta: some View {
         Button { apriDaily() } label: {
             HStack(spacing: 16) {
-                cardIcon(emoji: "🧵", tinta: Theme.textMuted)
-                    .saturation(0)
-                    .opacity(0.6)
+                Group {
+                    if Theme.usaArte {
+                        cardIllustrazione("CardDaily")
+                    } else {
+                        cardIcon(emoji: "🧵", tinta: Theme.textMuted)
+                    }
+                }
+                .saturation(0)
+                .opacity(0.6)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
                         Text("FILO del giorno")
@@ -226,11 +256,20 @@ struct MenuView: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(Theme.textMuted.opacity(0.6))
             }
-            .padding(20)
+            .padding(cardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.surface2.opacity(0.55), in: RoundedRectangle(cornerRadius: 22))
-            .overlay(RoundedRectangle(cornerRadius: 22)
-                .strokeBorder(Theme.border, lineWidth: 1))
+            .background {
+                if Theme.usaArte {
+                    PannelloVelluto(raggio: 22, bordoOpacita: 0, bordoSpessore: 1)
+                        .opacity(0.7)
+                        .overlay(RoundedRectangle(cornerRadius: 22)
+                            .strokeBorder(Theme.border, lineWidth: 1))
+                } else {
+                    RoundedRectangle(cornerRadius: 22).fill(Theme.surface2.opacity(0.55))
+                        .overlay(RoundedRectangle(cornerRadius: 22)
+                            .strokeBorder(Theme.border, lineWidth: 1))
+                }
+            }
         }
         .buttonStyle(MenuCardStyle())
         .accessibilityElement(children: .combine)
@@ -242,7 +281,11 @@ struct MenuView: View {
     private var salitaCard: some View {
         Button { apriSalita() } label: {
             HStack(spacing: 16) {
-                cardIcon(systemName: "figure.climbing", tinta: Theme.sarto)
+                if Theme.usaArte {
+                    cardIllustrazione("CardSalita")
+                } else {
+                    cardIcon(systemName: "figure.climbing", tinta: Theme.sarto)
+                }
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Salita")
                         .font(.title3.weight(.bold))
@@ -261,11 +304,17 @@ struct MenuView: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(Theme.sarto)
             }
-            .padding(20)
+            .padding(cardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22))
-            .overlay(RoundedRectangle(cornerRadius: 22)
-                .strokeBorder(Theme.sarto.opacity(0.5), lineWidth: 1.5))
+            .background {
+                if Theme.usaArte {
+                    PannelloVelluto(raggio: 22, bordoOpacita: 0.6, bordoSpessore: 1.2)
+                } else {
+                    RoundedRectangle(cornerRadius: 22).fill(Theme.surface)
+                        .overlay(RoundedRectangle(cornerRadius: 22)
+                            .strokeBorder(Theme.sarto.opacity(0.5), lineWidth: 1.5))
+                }
+            }
             .shadow(color: .black.opacity(0.25), radius: 10, y: 2)
         }
         .buttonStyle(MenuCardStyle())
@@ -307,6 +356,23 @@ struct MenuView: View {
             }
             .accessibilityLabel("Come si gioca")
         }
+    }
+
+    /// Padding interno delle card: col kit grafico l'illustrazione è più
+    /// grande dell'icona, quindi si recupera un po' di spazio verticale.
+    private var cardPadding: EdgeInsets {
+        Theme.usaArte ? EdgeInsets(top: 14, leading: 14, bottom: 14, trailing: 20)
+                      : EdgeInsets(top: 20, leading: 20, bottom: 20, trailing: 20)
+    }
+
+    /// Illustrazione del kit (CardDaily / CardSalita), decorativa.
+    private func cardIllustrazione(_ nome: String) -> some View {
+        Image(decorative: nome)
+            .resizable()
+            .interpolation(.high)
+            .scaledToFit()
+            .frame(width: 64, height: 64)
+            .accessibilityHidden(true)
     }
 
     private func cardIcon(emoji: String? = nil, systemName: String? = nil, tinta: Color) -> some View {

@@ -28,17 +28,30 @@ struct IntroView: View {
 
     var body: some View {
         ZStack {
-            Theme.bgGradient.ignoresSafeArea()
+            SfondoTema()
             VStack(spacing: 18) {
                 art
                     .frame(width: 230, height: 172)
-                Text("FILO")
-                    .font(.system(size: 64, weight: .heavy))
-                    .kerning(14)
-                    .padding(.leading, 14)
-                    .foregroundStyle(Theme.filoGradient)
-                    .opacity(wordmark ? 1 : 0)
-                    .scaleEffect(wordmark ? 1 : 0.92)
+                if Theme.usaArte {
+                    // Logo in corda d'oro: entra con fade + leggero scale e un
+                    // bagliore dorato che si posa (stessi tempi del wordmark).
+                    Image(decorative: "LogoFilo")
+                        .resizable()
+                        .interpolation(.high)
+                        .scaledToFit()
+                        .frame(maxWidth: 280, maxHeight: 96)
+                        .shadow(color: Arte.oro.opacity(wordmark ? 0.35 : 0), radius: 18)
+                        .opacity(wordmark ? 1 : 0)
+                        .scaleEffect(wordmark ? 1 : 0.88)
+                } else {
+                    Text("FILO")
+                        .font(.system(size: 64, weight: .heavy))
+                        .kerning(14)
+                        .padding(.leading, 14)
+                        .foregroundStyle(Theme.filoGradient)
+                        .opacity(wordmark ? 1 : 0)
+                        .scaleEffect(wordmark ? 1 : 0.92)
+                }
                 Text("Un filo. Una somma. Ogni giorno.")
                     .font(.subheadline)
                     .foregroundStyle(Theme.textMuted)
@@ -65,11 +78,15 @@ struct IntroView: View {
                         .frame(width: 8 * s, height: 8 * s)
                         .position(P(dots[i]))
                 }
-                PolylineShape(points: thread.map(P))
-                    .trim(from: 0, to: trimEnd)
-                    .stroke(Theme.filoGradient,
-                            style: StrokeStyle(lineWidth: 9 * s, lineCap: .round, lineJoin: .round))
-                    .shadow(color: Theme.filo.opacity(0.6), radius: 8 * s)
+                if Theme.usaArte {
+                    CordaOro(punti: thread.map(P), trim: trimEnd, spessore: 9 * s)
+                } else {
+                    PolylineShape(points: thread.map(P))
+                        .trim(from: 0, to: trimEnd)
+                        .stroke(Theme.filoGradient,
+                                style: StrokeStyle(lineWidth: 9 * s, lineCap: .round, lineJoin: .round))
+                        .shadow(color: Theme.filo.opacity(0.6), radius: 8 * s)
+                }
                 Circle()
                     .fill(Theme.filoGradient)
                     .frame(width: 15 * s, height: 15 * s)

@@ -96,7 +96,7 @@ final class ScreenshotTests: XCTestCase {
 
     // MARK: Fasi
 
-    /// 01 — menu dopo l'intro (IntroView ~4,7 s + 0,45 s di dissolvenza).
+    /// 01 — menu dopo l'intro (IntroView ~1,4 s + 0,3 s di dissolvenza).
     @MainActor
     private func faseHome() throws {
         let card = elemento(ui.cardDaily)
@@ -192,19 +192,19 @@ final class ScreenshotTests: XCTestCase {
         pausa(0.8)
         let g2 = try risolviSalita(livello: 2, completo: false)
         log("SALITA L2 parziale: \(g2)")
-        aspettaScomparsa(elemento(ui.livelloSuperato), timeout: 5)   // toast via
+        aspettaScomparsa(elemento(ui.livelloCompletato), timeout: 5)   // toast via
         pausa(0.6)
         scatta("05_salita")
     }
 
-    /// 06 — Profilo → Archivio FILO.
+    /// 06 — Impostazioni (icona ingranaggio della Home) → voce "Archivio FILO".
     @MainActor
     private func faseArchivio() throws {
         try tornaAlMenu()
-        try tappa(ui.profilo)
+        try tappa(ui.impostazioni)
         let voce = elemento(contiene: ui.archivio)
         guard voce.waitForExistence(timeout: 10) else {
-            throw ErroreScreenshot.fase("voce Archivio non trovata nel Profilo")
+            throw ErroreScreenshot.fase("voce Archivio non trovata nelle Impostazioni")
         }
         var tentativi = 0
         while !voce.isHittable && tentativi < 4 {
@@ -608,7 +608,8 @@ private struct Testi {
     }
     var cardSalita: String { it ? "Salita, sempre disponibile" : "Climb, always available" }
     var statistiche: String { it ? "Statistiche" : "Statistics" }
-    var profilo: String { it ? "Profilo e temi" : "Profile and themes" }
+    /// Icona ingranaggio della Home (apre ProfileView, titolo "Impostazioni").
+    var impostazioni: String { it ? "Impostazioni" : "Settings" }
     var comeSiGioca: String { it ? "Come si gioca" : "How to play" }
 
     // RootView / schede
@@ -617,7 +618,8 @@ private struct Testi {
     var prefissoGioca: String { it ? "Gioca il FILO #" : "Play FILO #" }
     var salta: String { it ? "Salta" : "Skip" }
     var riscaldamento: String { it ? "Riscaldamento" : "Warm-up" }
-    var linkStatistiche: String { it ? "📊 Le tue statistiche" : "📊 Your statistics" }
+    /// ResultView: link secondario sotto "Condividi il risultato".
+    var linkStatistiche: String { it ? "Vedi le statistiche" : "View statistics" }
     /// HUD del daily: accessibilityLabel "Somma del giorno: T" / "Il Sarto ha usato L caselle…"
     var prefissoSommaGiorno: String { it ? "Somma del giorno: " : "Daily sum: " }
     var prefissoSarto: String { it ? "Il Sarto ha usato " : "The Tailor used " }
@@ -630,7 +632,8 @@ private struct Testi {
 
     // Salita
     func livello(_ n: Int) -> String { it ? "Livello \(n)" : "Level \(n)" }
-    var livelloSuperato: String { it ? "Livello superato!" : "Level cleared!" }
+    /// Toast di livello superato (SalitaViewModel).
+    var livelloCompletato: String { it ? "Livello completato" : "Level complete" }
     var prefissoObiettivo: String { it ? "Obiettivo: " : "Target: " }
 
     /// Target dei livelli della Salita (SalitaViewModel.target: 10, 25, 50, 100…).
@@ -644,7 +647,7 @@ private struct Testi {
         }
     }
 
-    // Profilo / Archivio
+    // Impostazioni / Archivio
     var archivio: String { it ? "Archivio FILO" : "FILO archive" }
     var prefissoRigaArchivio: String { it ? "FILO numero " : "FILO number " }
 }

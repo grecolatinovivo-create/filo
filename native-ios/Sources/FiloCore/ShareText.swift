@@ -6,7 +6,7 @@ import Foundation
 /// JS: `if (CONFIG.SHARE_URL) righe.push(CONFIG.SHARE_URL)`).
 public enum ShareText {
     /// URL pubblico del gioco — stesso valore di `CONFIG.SHARE_URL` nel web.
-    public static let shareURL = "https://filo-game.vercel.app"
+    public static let shareURL = "https://filo-game-liard.vercel.app"
 
     public static func build(numero: Int, vinta: Bool, fili: [FiloConcluso],
                              T: Int, stelle: Int, sartoBattuto: Bool,

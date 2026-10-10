@@ -636,15 +636,13 @@ private struct Testi {
     var livelloCompletato: String { it ? "Livello completato" : "Level complete" }
     var prefissoObiettivo: String { it ? "Obiettivo: " : "Target: " }
 
-    /// Target dei livelli della Salita (SalitaViewModel.target: 10, 25, 50, 100…).
+    /// Target dei livelli della Salita v2 (SalitaGenerator.parameters:
+    /// T(n) = 10 + 6·(n − 1) fino al 16, poi 96…104). Solo ripiego: il
+    /// target vero è letto dall'etichetta "Obiettivo: N".
     static func targetSalita(livello n: Int) -> Int {
-        switch n {
-        case ..<2: return 10
-        case 2: return 25
-        case 3: return 50
-        case 4: return 100
-        default: return 100 + (n - 4) * 100
-        }
+        let l = max(1, n)
+        if l <= 16 { return 10 + 6 * (l - 1) }
+        return 96 + 2 * ((l - 14) % 5)
     }
 
     // Impostazioni / Archivio

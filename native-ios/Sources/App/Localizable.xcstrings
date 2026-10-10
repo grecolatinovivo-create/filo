@@ -4930,59 +4930,6 @@
         }
       }
     },
-    "Somme sempre più alte, tre vite": {
-      "extractionState": "manual",
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Somme sempre più alte, tre vite"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ever-higher targets, three lives"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Des sommes toujours plus hautes, trois vies"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sumas cada vez más altas, tres vidas"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Immer höhere Summen, drei Leben"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "目标越来越高，三条命"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Somas cada vez mais altas, três vidas"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "どんどん高くなる合計、ライフは3つ"
-          }
-        }
-      }
-    },
     "C'è un nuovo FILO.": {
       "extractionState": "manual",
       "localizations": {
@@ -10275,6 +10222,59 @@
           "stringUnit": {
             "state": "translated",
             "value": "ライフを1つ失いました。"
+          }
+        }
+      }
+    },
+    "Contro il tempo, tre vite": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contro il tempo, tre vite"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Against the clock, three lives"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contre la montre, trois vies"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contra el reloj, tres vidas"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gegen die Zeit, drei Leben"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "与时间赛跑，三条命"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contra o relógio, três vidas"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "時間との勝負、ライフは3つ"
           }
         }
       }

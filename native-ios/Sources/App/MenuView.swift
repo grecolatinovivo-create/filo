@@ -361,7 +361,7 @@ struct MenuView: View {
                         if salitaBest > 0 {
                             Text("Livello \(salitaBest) · \(3) vite")
                         } else {
-                            Text("Somme sempre più alte, tre vite")
+                            Text("Contro il tempo, tre vite")
                         }
                     }
                     .filoFont(.body)

@@ -31,6 +31,11 @@ final class GameViewModel: ObservableObject {
         var stelle: Int
         var sartoBattuto: Bool
         var percorsoVincente: [Int]?
+        /// Secondi di gioco ATTIVO (primo tocco → somma esatta, solo con
+        /// l'app attiva e il daily in primo piano). nil = cronometro mai
+        /// partito (o salvataggio precedente alla 2.1: decodifica opzionale,
+        /// retro-compatibile).
+        var tempoAttivo: Double?
     }
 
     // MARK: Stato pubblicato
@@ -44,7 +49,10 @@ final class GameViewModel: ObservableObject {
     @Published private(set) var sartoBattutoOggi = false
 
     @Published var scheda: Scheda? {
-        didSet { if let scheda { ultimaSchedaPresentata = scheda } }
+        didSet {
+            if let scheda { ultimaSchedaPresentata = scheda }
+            aggiornaCronometro()     // una scheda copre la griglia: tempo fermo
+        }
     }
     @Published var showStrappoDialog = false
     @Published private(set) var lockInput = false
@@ -55,6 +63,11 @@ final class GameViewModel: ObservableObject {
     @Published private(set) var shakes: [Int: Int] = [:]
     @Published private(set) var shakeTick = 0          // trigger sensoryFeedback
     @Published private(set) var casellaNonValida: Int? // flash bordo (reduce motion)
+    /// Tempo della vittoria di oggi in secondi interi ("Risolto in m:ss");
+    /// nil se non vinta o se il tempo non è stato misurato.
+    @Published private(set) var tempoRisolto: Int?
+    /// Miglior tempo di vittoria (secondi), chiave `filo.tempoMigliore`.
+    @Published private(set) var tempoMigliore: Int?
 
     private var bannerDismissedFor: String?
     private var risultatoMostrato = false
@@ -68,6 +81,17 @@ final class GameViewModel: ObservableObject {
     private var ultimaSchedaPresentata: Scheda?
     private let progressiveKey = "filo.onboardingProgressivoFatto"
 
+    // Tempo attivo del daily (SALITA_TIMER_SPEC §0): nessun limite, solo
+    // misura. Orologio monotono; corre dal primo tocco di una casella alla
+    // somma esatta, solo con app attiva, daily in primo piano e nessuna
+    // scheda sopra. Salvato con la partita di oggi (`filo.today`).
+    static let tempoMiglioreKey = "filo.tempoMigliore"
+    private var cronometroDaily = FiloCronometro()
+    private var cronometroAvviato = false
+    private var dailyInPrimoPiano = false
+    private var appAttiva = true
+    private var osservatoriApp: [AnyCancellable] = []
+
     private let defaults = UserDefaults.standard
 
     // MARK: Init / bootstrap
@@ -80,6 +104,8 @@ final class GameViewModel: ObservableObject {
         dataOggi = FiloDate.dateString(y: o.y, m: o.m, d: o.d)
         engine = GameEngine(puzzle: daily.puzzle)
         stats = Self.loadStats(from: UserDefaults.standard)
+        let migliore = UserDefaults.standard.integer(forKey: Self.tempoMiglioreKey)
+        tempoMigliore = migliore > 0 ? migliore : nil
         ripristinaGiornata()
         // La home ora è il MENU: qui non si presenta più nessuna scheda.
         // La catena primo avvio (tutorial → onboarding progressivo) e il
@@ -95,6 +121,7 @@ final class GameViewModel: ObservableObject {
         if engine.gameOver {
             revealSarto = true             // la board mostra subito il Sarto
         }
+        osservaApp()
     }
 
     /// Chiamata all'apertura del daily (onAppear di RootView): applica la
@@ -127,6 +154,10 @@ final class GameViewModel: ObservableObject {
 
     /// Carica (o ricarica) il puzzle del giorno corrente.
     func bootGiorno() {
+        // Prima di tutto: il tempo del giorno precedente non deve finire nel
+        // salvataggio del giorno nuovo (lo `scheda = nil` qui sotto aggiorna
+        // il cronometro).
+        azzeraCronometro()
         let o = Self.oggiParts()
         let daily = Generator.daily(y: o.y, m: o.m, d: o.d)
         puzzle = daily.puzzle
@@ -156,6 +187,11 @@ final class GameViewModel: ObservableObject {
                           percorsoVincente: today.percorsoVincente)
         stelleOggi = today.stelle
         sartoBattutoOggi = today.sartoBattuto
+        if let t = today.tempoAttivo {
+            cronometroDaily = FiloCronometro(accumulato: t)
+            cronometroAvviato = true
+            if today.stato == .vinta { tempoRisolto = Self.secondiInteri(t) }
+        }
         if today.stato == .inCorso && engine.stato == .persa {
             // reload avvenuto dopo il terzo filo ma prima della valutazione finale
             let o = Self.oggiParts()
@@ -197,7 +233,8 @@ final class GameViewModel: ObservableObject {
         let record = TodayRecord(data: dataOggi, numero: numero, stato: engine.stato,
                                  fili: engine.fili, stelle: stelleOggi,
                                  sartoBattuto: sartoBattutoOggi,
-                                 percorsoVincente: engine.percorsoVincente)
+                                 percorsoVincente: engine.percorsoVincente,
+                                 tempoAttivo: cronometroAvviato ? cronometroDaily.trascorso() : nil)
         if let data = try? JSONEncoder().encode(record) {
             defaults.set(data, forKey: "filo.today")
         }
@@ -265,12 +302,16 @@ final class GameViewModel: ObservableObject {
         let mossa = engine.gioca(idx)
         switch mossa {
         case .iniziato:
+            avviaCronometroSeServe()
             SoundManager.shared.plin(passo: engine.filo.count)
             annuncia(String(localized: "Filo iniziato. Somma \(engine.somma) su \(puzzle.T)."))
         case .esteso:
             SoundManager.shared.plin(passo: engine.filo.count)
             annuncia(String(localized: "Più \(puzzle.valori[idx]). Somma \(engine.somma) su \(puzzle.T), \(engine.filo.count) caselle."))
         case .vittoria:
+            // T ≥ 20 nel daily: la vittoria non è mai la prima casella, ma
+            // il cronometro parte comunque dal primo tocco.
+            avviaCronometroSeServe()
             SoundManager.shared.plin(passo: engine.filo.count)
             gestisciVittoria()
         case .spezzato:
@@ -326,6 +367,7 @@ final class GameViewModel: ObservableObject {
 
     private func gestisciVittoria() {
         lockInput = true
+        registraTempoVittoria()
         let C = engine.percorsoVincente?.count ?? 0
         let res = Punteggio.stelle(caselle: C, lSarto: puzzle.lSarto)
         stelleOggi = res.stelle
@@ -381,6 +423,7 @@ final class GameViewModel: ObservableObject {
     }
 
     private func gestisciSconfitta() {
+        aggiornaCronometro()          // partita finita: tempo fermo
         let o = Self.oggiParts()
         stats.registra(vinta: false, filiUsati: 3, caselle: 0, gold: false, oggi: o)
         salvaStats()
@@ -469,6 +512,7 @@ final class GameViewModel: ObservableObject {
     /// come a inizio giornata, cancellando il salvataggio del giorno. Non tocca
     /// le statistiche storiche. Solo per test.
     func testerAzzera() {
+        azzeraCronometro()
         engine = GameEngine(puzzle: puzzle)
         stelleOggi = 0
         sartoBattutoOggi = false
@@ -488,6 +532,7 @@ final class GameViewModel: ObservableObject {
     func testerNuoviNumeri() {
         let semeCasuale = Int.random(in: 10_000_000...99_999_999)
         puzzle = Generator.generate(seed: semeCasuale)
+        azzeraCronometro()
         engine = GameEngine(puzzle: puzzle)
         stelleOggi = 0
         sartoBattutoOggi = false
@@ -499,6 +544,82 @@ final class GameViewModel: ObservableObject {
         casellaNonValida = nil
         toast = nil
         scheda = nil
+    }
+
+    // MARK: Tempo attivo del daily (SALITA_TIMER_SPEC §0)
+
+    /// Il MenuView segnala quando il daily (fullScreenCover) è in primo piano.
+    func impostaDailyInPrimoPiano(_ visibile: Bool) {
+        dailyInPrimoPiano = visibile
+        aggiornaCronometro()
+    }
+
+    private var cronometroDeveCorrere: Bool {
+        cronometroAvviato && dailyInPrimoPiano && appAttiva && scheda == nil
+            && !engine.gameOver
+    }
+
+    private func avviaCronometroSeServe() {
+        guard !cronometroAvviato else { return }
+        cronometroAvviato = true
+        // Il primo tocco avviene col daily a schermo: l'orologio parte ora
+        // anche se il segnale di primo piano non fosse ancora arrivato.
+        dailyInPrimoPiano = true
+        cronometroDaily.avvia()
+    }
+
+    private func aggiornaCronometro() {
+        if cronometroDeveCorrere {
+            cronometroDaily.avvia()
+        } else if cronometroDaily.inCorsa {
+            cronometroDaily.ferma()
+            // Pausa (sfondo, menu, scheda): il tempo resta salvato con la
+            // partita di oggi.
+            if !engine.gameOver { salvaOggi() }
+        }
+    }
+
+    private func azzeraCronometro() {
+        cronometroDaily = FiloCronometro()
+        cronometroAvviato = false
+        tempoRisolto = nil
+    }
+
+    /// Vittoria: tempo fermo, "Risolto in m:ss" e record "Tempo migliore".
+    private func registraTempoVittoria() {
+        cronometroDaily.ferma()
+        guard cronometroAvviato else { return }
+        let secondi = Self.secondiInteri(cronometroDaily.trascorso())
+        tempoRisolto = secondi
+        if tempoMigliore.map({ secondi < $0 }) ?? true {
+            tempoMigliore = secondi
+            defaults.set(secondi, forKey: Self.tempoMiglioreKey)
+        }
+    }
+
+    private static func secondiInteri(_ t: Double) -> Int {
+        max(1, Int(t.rounded()))
+    }
+
+    /// Pausa immediata quando l'app lascia lo stato attivo (anche con un
+    /// foglio di sistema sopra), ripresa al ritorno.
+    private func osservaApp() {
+        let centro = NotificationCenter.default
+        osservatoriApp = [
+            centro.publisher(for: UIApplication.willResignActiveNotification)
+                .sink { [weak self] _ in
+                    Task { @MainActor in self?.impostaAppAttiva(false) }
+                },
+            centro.publisher(for: UIApplication.didBecomeActiveNotification)
+                .sink { [weak self] _ in
+                    Task { @MainActor in self?.impostaAppAttiva(true) }
+                },
+        ]
+    }
+
+    private func impostaAppAttiva(_ attiva: Bool) {
+        appAttiva = attiva
+        aggiornaCronometro()
     }
 
     // MARK: Chiusura schede

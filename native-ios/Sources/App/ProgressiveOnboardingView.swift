@@ -2,8 +2,11 @@ import SwiftUI
 import FiloCore
 
 /// ONBOARDING PROGRESSIVO "Riscaldamento" (primo avvio, dopo "Come si gioca").
-/// Tre mini-sfide a somma piccola e crescente generate con `PracticeGenerator`,
-/// per creare confidenza col gesto del filo PRIMA del FILO del giorno.
+/// Tre mini-sfide a somma piccola e crescente (6, 10, 15 con percorsi di 2, 3
+/// e 4 caselle) generate con `SalitaGenerator.make(target:length:seed:minShortest:)`:
+/// nessuna soluzione più corta del percorso previsto, quindi niente
+/// soluzioni banali fatte di una sola cifra ripetuta. Crea confidenza col
+/// gesto del filo PRIMA del FILO del giorno.
 /// Saltabile e mostrato UNA sola volta (flag `filo.onboardingProgressivoFatto`).
 /// Stesso linguaggio visivo dell'HUD/board della Partita (REDESIGN_SPEC §6.9).
 struct ProgressiveOnboardingView: View {
@@ -12,6 +15,8 @@ struct ProgressiveOnboardingView: View {
 
     @State private var indice = 0
     private let targets = [6, 10, 15]
+    /// Lunghezza del percorso d'autore di ogni sfida (SALITA_TIMER_SPEC §2).
+    private let lunghezze = [2, 3, 4]
 
     var body: some View {
         GeometryReader { geo in
@@ -20,6 +25,7 @@ struct ProgressiveOnboardingView: View {
                 header
                 SfidaPratica(
                     target: targets[indice],
+                    lunghezza: lunghezze[indice],
                     indice: indice,
                     totale: targets.count,
                     ultima: indice == targets.count - 1,
@@ -78,14 +84,18 @@ private struct SfidaPratica: View {
     @State private var vinta = false
     @State private var feedback: String?
 
-    init(target: Int, indice: Int, totale: Int, ultima: Bool,
+    init(target: Int, lunghezza: Int, indice: Int, totale: Int, ultima: Bool,
          onVittoria: @escaping () -> Void) {
         self.target = target
         self.indice = indice
         self.totale = totale
         self.ultima = ultima
         self.onVittoria = onVittoria
-        let puzzle = PracticeGenerator.make(target: target, seed: UInt64(0xF11040 + indice))
+        // Seme fisso (riscaldamento identico per tutti); `minShortest` =
+        // lunghezza: nessuna soluzione più corta del percorso previsto.
+        let puzzle = SalitaGenerator.make(target: target, length: lunghezza,
+                                          seed: UInt64(0xF11040 + indice),
+                                          minShortest: lunghezza)
         _session = StateObject(wrappedValue: PracticeSession(puzzle: puzzle))
     }
 

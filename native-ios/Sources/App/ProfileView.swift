@@ -16,6 +16,16 @@ struct ProfileView: View {
     @AppStorage(SoundManager.defaultsKey) private var suoniAttivi = true
     // Stesso storage letto da FiloHaptics ("filo.haptics", default attivo).
     @AppStorage(FiloHaptics.defaultsKey) private var vibrazioneAttiva = true
+    // "Tempo nella Salita" ("normale" | "esteso" | "libero"). Nessun valore
+    // salvato = mai scelto: vale il default (Libero con VoiceOver attivo).
+    @AppStorage(SalitaTempo.defaultsKey) private var salitaTempoSalvato: String?
+
+    private var salitaTempo: Binding<SalitaTempo> {
+        Binding(
+            get: { SalitaTempo.leggi(salitaTempoSalvato) },
+            set: { salitaTempoSalvato = $0.rawValue }
+        )
+    }
 
     private var mostraStrumentiAdmin: Bool { store.isSandbox || account.isAdmin }
 
@@ -230,6 +240,28 @@ struct ProfileView: View {
                 voce(titolo: "Vibrazione", sottotitolo: "Feedback tattile durante il gioco.")
             }
             .tint(Theme.filo)
+            .padding(.vertical, 14)
+
+            Rectangle()
+                .fill(Theme.border.opacity(0.6))
+                .frame(height: 1)
+                .accessibilityHidden(true)
+
+            // Tempo nella Salita (SALITA_TIMER_SPEC §1): Normale / Esteso / Libero.
+            VStack(alignment: .leading, spacing: 12) {
+                voce(titolo: "Tempo nella Salita",
+                     sottotitolo: "Il tempo esteso raddoppia i secondi. Libero toglie il timer, ma ogni filo spezzato o annodato costa una vita. Il record è separato.")
+                    .accessibilityHidden(true)   // detto dal selettore qui sotto
+                Picker("Tempo nella Salita", selection: salitaTempo) {
+                    ForEach(SalitaTempo.allCases) { modo in
+                        Text(modo.titolo).tag(modo)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .accessibilityHint(Text("Il tempo esteso raddoppia i secondi. Libero toglie il timer, ma ogni filo spezzato o annodato costa una vita. Il record è separato."))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 14)
         }
         .padding(.horizontal, FiloMetrics.cardPadding)

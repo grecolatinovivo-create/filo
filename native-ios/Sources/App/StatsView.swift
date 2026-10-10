@@ -201,7 +201,27 @@ struct StatsView: View {
                 .accessibilityAddTraits(.isHeader)
             rigaRecord("Più caselle in un FILO", valore: stats.recordCaselle)
             rigaRecord("Volte sopra il Sarto", valore: stats.sartoBattuto)
+            // Miglior tempo di vittoria del FILO del giorno ("m:ss").
+            rigaRecord("Tempo migliore",
+                       testo: vm.tempoMigliore.map { FiloDurata.testo(secondi: $0) } ?? "—")
         }
+    }
+
+    /// Variante con valore testuale già formattato (es. "1:42", "—").
+    private func rigaRecord(_ etichetta: LocalizedStringKey, testo: String) -> some View {
+        HStack(spacing: 12) {
+            Text(etichetta)
+                .filoFont(.body)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            Text(verbatim: testo)
+                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(Theme.textPrimary)
+        }
+        .frame(minHeight: 32)
+        .accessibilityElement(children: .combine)
     }
 
     private func rigaRecord(_ etichetta: LocalizedStringKey, valore: Int) -> some View {

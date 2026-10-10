@@ -814,3 +814,98 @@ private struct FiloScreenShift: ViewModifier {
             .animation(reduceMotion ? nil : FiloMotion.screen, value: controller.fase)
     }
 }
+
+// MARK: - Tempo (SALITA_TIMER_SPEC §0/§1)
+
+/// Cronometro MONOTONO (ContinuousClock: mai `Date`, immune ai cambi
+/// d'orologio). Accumula i secondi dei tratti in corsa; `ferma()` chiude il
+/// tratto corrente. Usato dal conto alla rovescia della Salita e dal tempo
+/// attivo del FILO del giorno.
+struct FiloCronometro: Equatable {
+    private(set) var accumulato: Double
+    private(set) var inizio: ContinuousClock.Instant?
+
+    init(accumulato: Double = 0) {
+        self.accumulato = max(0, accumulato)
+        self.inizio = nil
+    }
+
+    var inCorsa: Bool { inizio != nil }
+
+    /// Secondi trascorsi (tratti chiusi + tratto in corso).
+    func trascorso(_ adesso: ContinuousClock.Instant = ContinuousClock.now) -> Double {
+        guard let inizio else { return accumulato }
+        return accumulato + Self.secondi(inizio.duration(to: adesso))
+    }
+
+    mutating func avvia(_ adesso: ContinuousClock.Instant = ContinuousClock.now) {
+        guard inizio == nil else { return }
+        inizio = adesso
+    }
+
+    mutating func ferma(_ adesso: ContinuousClock.Instant = ContinuousClock.now) {
+        guard let i = inizio else { return }
+        accumulato += Self.secondi(i.duration(to: adesso))
+        inizio = nil
+    }
+
+    mutating func azzera() {
+        accumulato = 0
+        inizio = nil
+    }
+
+    static func secondi(_ d: Duration) -> Double {
+        let c = d.components
+        return max(0, Double(c.seconds) + Double(c.attoseconds) / 1e18)
+    }
+}
+
+/// Formattazione dei tempi "m:ss" (es. 0:48, 3:07, 75:02).
+enum FiloDurata {
+    static func testo(secondi: Int) -> String {
+        let s = max(0, secondi)
+        return String(format: "%d:%02d", s / 60, s % 60)
+    }
+}
+
+/// Barra del conto alla rovescia (Salita): 3 pt, raggio 1,5, si svuota da
+/// sinistra a destra (la parte piena resta ancorata a destra). Colore per
+/// quota rimasta: > 30 % oro #D8B56A, 30–15 % ambra #C58A48, < 15 % corallo
+/// #B45A52 (il testo accanto resta avorio: il colore non è mai l'unico
+/// indizio). Decorativa: l'etichetta d'accessibilità va sul contenitore.
+/// Uso: `CountdownBar(frazione: 0.62)`.
+struct CountdownBar: View {
+    let frazione: Double
+    var altezza: CGFloat = 3
+
+    init(frazione: Double, altezza: CGFloat = 3) {
+        self.frazione = frazione
+        self.altezza = altezza
+    }
+
+    static let oro = Color(hexRGB: 0xD8B56A)
+    static let ambra = Color(hexRGB: 0xC58A48)
+    static let corallo = Color(hexRGB: 0xB45A52)
+
+    /// Colore per quota rimasta (0…1).
+    static func colore(frazione f: Double) -> Color {
+        if f > 0.30 { return oro }
+        if f >= 0.15 { return ambra }
+        return corallo
+    }
+
+    var body: some View {
+        let f = min(1, max(0, frazione))
+        GeometryReader { geo in
+            ZStack(alignment: .trailing) {
+                Capsule().fill(Theme.stroke.opacity(0.7))
+                Capsule()
+                    .fill(Self.colore(frazione: f))
+                    .frame(width: geo.size.width * f)
+            }
+        }
+        .frame(height: altezza)
+        .clipShape(RoundedRectangle(cornerRadius: altezza / 2, style: .continuous))
+        .accessibilityHidden(true)
+    }
+}

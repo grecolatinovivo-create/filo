@@ -61,8 +61,10 @@ struct MenuView: View {
         )
     }
 
+    /// Record della Salita nella modalità di tempo in vigore (a tempo →
+    /// `filo.salitaBest`, "Libero" → `filo.salitaBestLibero`).
     private var salitaBest: Int {
-        UserDefaults.standard.integer(forKey: "filo.salitaBest")
+        SalitaTempo.corrente.record
     }
 
     // MARK: Body
@@ -160,6 +162,10 @@ struct MenuView: View {
         }
         .onChange(of: scenePhase) { _, fase in
             if fase == .active { aggiornaGiorno() }
+        }
+        // Tempo attivo del daily: corre solo col daily in primo piano.
+        .onChange(of: showDaily) { _, visibile in
+            vm.impostaDailyInPrimoPiano(visibile)
         }
         .onReceive(timerGiorno) { _ in aggiornaGiorno() }
         .onChange(of: entrata) { _, visibile in

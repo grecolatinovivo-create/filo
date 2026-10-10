@@ -153,6 +153,15 @@ struct ResultView: View {
                         .filoFont(.caption)
                         .foregroundStyle(Theme.textTertiary)
                 }
+                // Tempo attivo (statistica personale, solo a vittoria; non
+                // entra nel testo di condivisione).
+                if vinta, let secondi = vm.tempoRisolto {
+                    let durataTesto = FiloDurata.testo(secondi: secondi)
+                    Text("Risolto in \(durataTesto)")
+                        .filoFont(.caption)
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.textTertiary)
+                }
             }
             .padding(.top, FiloMetrics.relatedGapLarge)
             .opacity(titoloVisibile ? 1 : 0)
